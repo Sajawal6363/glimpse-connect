@@ -119,6 +119,10 @@ const Stream = () => {
 
   const { remoteStream, isConnected, connectToPeer, disconnect } = useWebRTC({
     userId: user?.id || "",
+    onRemoteStream: () => {
+      // WebRTC connected — transition from connecting to connected
+      setState("connected");
+    },
     onClose: () => {
       setState("idle");
       toast({
