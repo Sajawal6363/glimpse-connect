@@ -10,7 +10,16 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { NavLink } from "@/components/NavLink";
-import { Video, MessageCircle, Compass, Settings, User, Bell, Home } from "lucide-react";
+import {
+  Video,
+  MessageCircle,
+  Compass,
+  Settings,
+  User,
+  Bell,
+  Home,
+} from "lucide-react";
+import { Link } from "react-router-dom";
 
 const mainItems = [
   { title: "Home", url: "/", icon: Home },
@@ -30,7 +39,10 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/50 hidden md:flex">
+    <Sidebar
+      collapsible="icon"
+      className="border-r border-border/50 hidden md:flex"
+    >
       <SidebarContent className="bg-sidebar pt-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-muted-foreground text-xs uppercase tracking-wider">
@@ -48,7 +60,9 @@ export function AppSidebar() {
                       activeClassName="bg-primary/10 text-primary neon-glow-blue"
                     >
                       <item.icon className="w-5 h-5 shrink-0" />
-                      {!collapsed && <span className="font-medium">{item.title}</span>}
+                      {!collapsed && (
+                        <span className="font-medium">{item.title}</span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -72,7 +86,9 @@ export function AppSidebar() {
                       activeClassName="bg-primary/10 text-primary"
                     >
                       <item.icon className="w-5 h-5 shrink-0" />
-                      {!collapsed && <span className="font-medium">{item.title}</span>}
+                      {!collapsed && (
+                        <span className="font-medium">{item.title}</span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -82,14 +98,14 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {!collapsed && (
-          <div className="mt-auto p-4">
+          <Link to="/plans" className="mt-auto p-4">
             <div className="glass rounded-xl p-3 text-center">
               <p className="text-xs text-muted-foreground mb-2">Go Premium</p>
               <div className="text-sm font-semibold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                 Ad-free + Exclusive Features
               </div>
             </div>
-          </div>
+          </Link>
         )}
       </SidebarContent>
     </Sidebar>

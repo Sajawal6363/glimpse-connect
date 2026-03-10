@@ -23,9 +23,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
         <div className="flex-1 flex flex-col z-10">
           <Navbar />
-          <div className="hidden md:flex items-center h-0">
-            <SidebarTrigger className="ml-2 mt-4 text-muted-foreground hover:text-foreground" />
-          </div>
 
           <main className="flex-1 pb-20 md:pb-0">
             <AnimatePresence mode="wait">
