@@ -316,6 +316,17 @@ const Stream = () => {
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6">
                   <Video className="w-10 h-10 text-primary" />
                 </div>
+
+                {/* Online users count */}
+                <div className="flex items-center gap-2 mb-4 px-4 py-2 rounded-full glass border border-border/30">
+                  <Users className="w-4 h-4 text-neon-green" />
+                  <span className="text-sm font-semibold text-foreground">
+                    {onlineCount}
+                  </span>
+                  <span className="text-sm text-muted-foreground">users online</span>
+                  <span className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+                </div>
+
                 <h2 className="text-2xl font-bold text-foreground mb-2">
                   Ready to Connect?
                 </h2>
