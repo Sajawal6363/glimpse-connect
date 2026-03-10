@@ -24,7 +24,7 @@ import GroupChatDetail from "./pages/GroupChatDetail";
 import CreateGroup from "./pages/CreateGroup";
 import FriendStream from "./pages/FriendStream";
 import GroupStream from "./pages/GroupStream";
-import Profile from "./pages/Profile";
+import ProfilePage from "./pages/Profile";
 import ProfileEdit from "./pages/ProfileEdit";
 import Explore from "./pages/Explore";
 import Settings from "./pages/Settings";
