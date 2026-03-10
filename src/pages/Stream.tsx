@@ -147,7 +147,8 @@ const Stream = () => {
       // Connect via WebRTC through a shared signaling room
       connectToPeer(roomId, initiator, localStreamRef.current);
 
-      setState("connected");
+      // Show intermediate "connecting" state until WebRTC connects
+      setState("connecting");
     },
     [user?.id, connectToPeer],
   );
