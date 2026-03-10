@@ -44,9 +44,11 @@ import { useMediaStream } from "@/hooks/useMediaStream";
 import InterstitialAd from "@/components/ads/InterstitialAd";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
+import { realtimeService } from "@/lib/realtime";
 import type { Profile } from "@/lib/supabase";
+import { Users } from "lucide-react";
 
-type StreamState = "idle" | "searching" | "connected";
+type StreamState = "idle" | "searching" | "connecting" | "connected";
 
 /**
  * Create a deterministic room id from two user ids so both peers join the same

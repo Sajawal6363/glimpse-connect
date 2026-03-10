@@ -187,7 +187,7 @@ const AppInner = () => {
           path="/profile/:username"
           element={
             <ProtectedRoute>
-              <Profile />
+              <ProfilePage />
             </ProtectedRoute>
           }
         />

@@ -470,7 +470,7 @@ const GroupStream = () => {
     }
 
     sendSignal("accept");
-    setStatus("connected");
+    // Status stays "connecting" until ontrack fires from peer connections
 
     // Timeout: if no peers connect within 30s, go back to idle
     setTimeout(() => {
