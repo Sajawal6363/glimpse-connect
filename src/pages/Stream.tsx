@@ -497,7 +497,40 @@ const Stream = () => {
               </motion.div>
             )}
 
-            {state === "connected" && (
+            {state === "connecting" && (
+              <motion.div
+                key="connecting"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm"
+              >
+                <motion.div
+                  className="w-20 h-20 rounded-full border-4 border-primary border-t-transparent mb-6"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+                <h2 className="text-xl font-bold text-foreground mb-2 neon-text-blue">
+                  Match Found!
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Establishing connection...
+                </p>
+                {matchedUser && (
+                  <div className="mt-4 flex items-center gap-3 glass rounded-xl px-4 py-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold">
+                      {matchedUser.username?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{matchedUser.username || "Stranger"}</p>
+                      <p className="text-xs text-muted-foreground">{matchedUser.country || "Unknown"}</p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+
               <motion.div
                 key="connected"
                 initial={{ opacity: 0, scale: 1.1 }}
