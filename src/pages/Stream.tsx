@@ -166,11 +166,14 @@ const Stream = () => {
     userId: user?.id || "",
     onMatch: handleMatch,
     onTimeout: () => {
-      setState("idle");
       toast({
         title: "No match found",
-        description: "Try again or adjust your filters.",
-        variant: "destructive",
+        description: "Retrying automatically...",
+      });
+      // Auto-retry on timeout
+      joinQueue({
+        country: countryFilter === "global" ? undefined : countryFilter,
+        gender: genderFilter === "any" ? undefined : genderFilter,
       });
     },
   });
