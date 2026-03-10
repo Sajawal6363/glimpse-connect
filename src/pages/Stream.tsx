@@ -530,7 +530,7 @@ const Stream = () => {
               </motion.div>
             )}
 
-
+            {state === "connected" && (
               <motion.div
                 key="connected"
                 initial={{ opacity: 0, scale: 1.1 }}
