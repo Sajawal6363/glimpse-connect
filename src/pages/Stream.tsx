@@ -69,12 +69,22 @@ const Stream = () => {
   const [reportReason, setReportReason] = useState("");
   const [reportDesc, setReportDesc] = useState("");
   const [timer, setTimer] = useState(0);
+  const [onlineCount, setOnlineCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const searchVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
+
+  // Track online users count
+  useEffect(() => {
+    setOnlineCount(realtimeService.getOnlineUsers().length);
+    const unsub = realtimeService.onPresenceChange((ids) => {
+      setOnlineCount(ids.length);
+    });
+    return unsub;
+  }, []);
 
   const { user } = useAuthStore();
   const {
