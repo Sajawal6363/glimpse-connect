@@ -34,6 +34,10 @@ class MatchmakingService {
     this.preferences = preferences;
     this._matched = false;
 
+    // Clear stale callbacks to prevent accumulation on re-queue
+    this.onMatchCallbacks = [];
+    this.onTimeoutCallbacks = [];
+
     // Use a presence channel so all users in the queue can see each other
     this.channel = supabase.channel("matchmaking-queue", {
       config: {
@@ -72,12 +76,12 @@ class MatchmakingService {
       if (!this._matched) this._tryMatch();
     }, 3000);
 
-    // Timeout after 30 seconds
+    // Timeout after 120 seconds (increased for low-traffic)
     this.searchTimeout = setTimeout(() => {
       if (!this._matched) {
         this.onTimeoutCallbacks.forEach((cb) => cb());
       }
-    }, 30000);
+    }, 120000);
   }
 
   private async _tryMatch() {
@@ -137,39 +141,43 @@ class MatchmakingService {
     // Take the first available if no preference matches
     if (!bestMatch) bestMatch = entries[0];
 
-    if (bestMatch) {
-      // Fetch the matched user's profile
-      const { data: matchedProfile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", bestMatch.userId)
-        .maybeSingle();
+    if (!bestMatch) return;
 
-      if (!matchedProfile || this._matched) return;
+    // DETERMINISTIC INITIATOR: Only the user with the smaller ID sends match-request.
+    // The other side waits for the broadcast to avoid double-match race conditions.
+    if (this.userId > bestMatch.userId) return;
 
-      // Fetch our own profile for the other user
-      const { data: ourProfile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", this.userId)
-        .maybeSingle();
+    // Fetch the matched user's profile
+    const { data: matchedProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", bestMatch.userId)
+      .maybeSingle();
 
-      // Send match-request to the other user
-      this.channel?.send({
-        type: "broadcast",
-        event: "match-request",
-        payload: {
-          fromUserId: this.userId,
-          fromProfile: ourProfile,
-          targetUserId: bestMatch.userId,
-        },
-      });
+    if (!matchedProfile || this._matched) return;
 
-      // We also accept the match on our end
-      this._matched = true;
-      this._clearTimers();
-      this.onMatchCallbacks.forEach((cb) => cb(matchedProfile as Profile));
-    }
+    // Fetch our own profile for the other user
+    const { data: ourProfile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", this.userId)
+      .maybeSingle();
+
+    // Send match-request to the other user
+    this.channel?.send({
+      type: "broadcast",
+      event: "match-request",
+      payload: {
+        fromUserId: this.userId,
+        fromProfile: ourProfile,
+        targetUserId: bestMatch.userId,
+      },
+    });
+
+    // We also accept the match on our end
+    this._matched = true;
+    this._clearTimers();
+    this.onMatchCallbacks.forEach((cb) => cb(matchedProfile as Profile));
   }
 
   private _clearTimers() {

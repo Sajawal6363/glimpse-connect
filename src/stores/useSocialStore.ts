@@ -341,7 +341,7 @@ export const useSocialStore = create<SocialState>((set, get) => ({
 
     if (data) {
       const requests = data.map((r: Record<string, unknown>) => ({
-        ...(r as Follow),
+        ...(r as unknown as Follow),
         from_user: r.from_user as Profile | undefined,
       }));
       set({ pendingRequests: requests });

@@ -44,9 +44,11 @@ import { useMediaStream } from "@/hooks/useMediaStream";
 import InterstitialAd from "@/components/ads/InterstitialAd";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
+import { realtimeService } from "@/lib/realtime";
 import type { Profile } from "@/lib/supabase";
+import { Users } from "lucide-react";
 
-type StreamState = "idle" | "searching" | "connected";
+type StreamState = "idle" | "searching" | "connecting" | "connected";
 
 /**
  * Create a deterministic room id from two user ids so both peers join the same
@@ -67,12 +69,22 @@ const Stream = () => {
   const [reportReason, setReportReason] = useState("");
   const [reportDesc, setReportDesc] = useState("");
   const [timer, setTimer] = useState(0);
+  const [onlineCount, setOnlineCount] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const searchVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
+
+  // Track online users count
+  useEffect(() => {
+    setOnlineCount(realtimeService.getOnlineUsers().length);
+    const unsub = realtimeService.onPresenceChange((ids) => {
+      setOnlineCount(ids.length);
+    });
+    return unsub;
+  }, []);
 
   const { user } = useAuthStore();
   const {
@@ -107,6 +119,10 @@ const Stream = () => {
 
   const { remoteStream, isConnected, connectToPeer, disconnect } = useWebRTC({
     userId: user?.id || "",
+    onRemoteStream: () => {
+      // WebRTC connected — transition from connecting to connected
+      setState("connected");
+    },
     onClose: () => {
       setState("idle");
       toast({
@@ -135,7 +151,8 @@ const Stream = () => {
       // Connect via WebRTC through a shared signaling room
       connectToPeer(roomId, initiator, localStreamRef.current);
 
-      setState("connected");
+      // Show intermediate "connecting" state until WebRTC connects
+      setState("connecting");
     },
     [user?.id, connectToPeer],
   );
@@ -149,11 +166,14 @@ const Stream = () => {
     userId: user?.id || "",
     onMatch: handleMatch,
     onTimeout: () => {
-      setState("idle");
       toast({
         title: "No match found",
-        description: "Try again or adjust your filters.",
-        variant: "destructive",
+        description: "Retrying automatically...",
+      });
+      // Auto-retry on timeout
+      joinQueue({
+        country: countryFilter === "global" ? undefined : countryFilter,
+        gender: genderFilter === "any" ? undefined : genderFilter,
       });
     },
   });
@@ -299,6 +319,17 @@ const Stream = () => {
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6">
                   <Video className="w-10 h-10 text-primary" />
                 </div>
+
+                {/* Online users count */}
+                <div className="flex items-center gap-2 mb-4 px-4 py-2 rounded-full glass border border-border/30">
+                  <Users className="w-4 h-4 text-neon-green" />
+                  <span className="text-sm font-semibold text-foreground">
+                    {onlineCount}
+                  </span>
+                  <span className="text-sm text-muted-foreground">users online</span>
+                  <span className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+                </div>
+
                 <h2 className="text-2xl font-bold text-foreground mb-2">
                   Ready to Connect?
                 </h2>
@@ -463,6 +494,39 @@ const Stream = () => {
                     Cancel
                   </Button>
                 </div>
+              </motion.div>
+            )}
+
+            {state === "connecting" && (
+              <motion.div
+                key="connecting"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm"
+              >
+                <motion.div
+                  className="w-20 h-20 rounded-full border-4 border-primary border-t-transparent mb-6"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+                <h2 className="text-xl font-bold text-foreground mb-2 neon-text-blue">
+                  Match Found!
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Establishing connection...
+                </p>
+                {matchedUser && (
+                  <div className="mt-4 flex items-center gap-3 glass rounded-xl px-4 py-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-primary-foreground font-bold">
+                      {matchedUser.username?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{matchedUser.username || "Stranger"}</p>
+                      <p className="text-xs text-muted-foreground">{matchedUser.country || "Unknown"}</p>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
