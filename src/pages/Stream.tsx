@@ -53,7 +53,27 @@ import AppLayout from "@/components/layout/AppLayout";
 import { supabase, type Profile } from "@/lib/supabase";
 import { useSocialStore } from "@/stores/useSocialStore";
 
-/* ─── Types ─── */
+/* ─── Typewriter Search Text ─── */
+const searchText = "Searching for a stranger…";
+const SearchingText = () => {
+  const [displayedText, setDisplayedText] = useState("");
+  useEffect(() => {
+    let i = 0;
+    setDisplayedText("");
+    const interval = setInterval(() => {
+      i++;
+      if (i <= searchText.length) {
+        setDisplayedText(searchText.slice(0, i));
+      } else if (i > searchText.length + 15) {
+        i = 0;
+        setDisplayedText("");
+      }
+    }, 80);
+    return () => clearInterval(interval);
+  }, []);
+  return <span>{displayedText}<span className="animate-pulse">|</span></span>;
+};
+
 type StreamState = "idle" | "searching" | "connecting" | "connected";
 
 /* ─── Constants ─── */
@@ -1509,44 +1529,137 @@ const Stream = () => {
                 </div>
               </div>
 
-              {/* Radar / searching animation */}
+              {/* Royal orbital search animation */}
               <div className="flex-1 flex flex-col items-center justify-center bg-background/50 px-4">
-                <div className="relative w-40 h-40 sm:w-48 sm:h-48 mb-6">
+                <div className="relative w-48 h-48 sm:w-56 sm:h-56 mb-6" style={{ perspective: "600px" }}>
+                  {/* Orbital rings */}
                   {[0, 1, 2].map((i) => (
                     <motion.div
-                      key={i}
-                      className="absolute inset-0 rounded-full border-2 border-primary/30"
-                      animate={{ scale: [0.5, 2.5], opacity: [0.8, 0] }}
+                      key={`ring-${i}`}
+                      className="absolute inset-0 rounded-full border border-primary/20"
+                      style={{
+                        rotateX: `${55 + i * 12}deg`,
+                        transformStyle: "preserve-3d",
+                      }}
+                      animate={{ rotateZ: i % 2 === 0 ? 360 : -360 }}
                       transition={{
-                        duration: 2,
+                        duration: 4 + i * 2,
                         repeat: Infinity,
-                        delay: i * 0.6,
+                        ease: "linear",
+                      }}
+                    >
+                      {/* Orbiting dots */}
+                      {[0, 1].map((d) => (
+                        <motion.div
+                          key={d}
+                          className="absolute w-2 h-2 rounded-full bg-primary"
+                          style={{
+                            top: d === 0 ? "-4px" : "auto",
+                            bottom: d === 1 ? "-4px" : "auto",
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            boxShadow: "0 0 8px hsl(var(--primary) / 0.6)",
+                          }}
+                        />
+                      ))}
+                    </motion.div>
+                  ))}
+
+                  {/* Wave ripples */}
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={`wave-${i}`}
+                      className="absolute inset-0 rounded-full border border-secondary/20"
+                      animate={{ scale: [0.4, 2.2], opacity: [0.6, 0] }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        delay: i * 1,
                         ease: "easeOut",
                       }}
                     />
                   ))}
+
+                  {/* Central energy core */}
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center neon-glow-blue">
-                      <Search className="w-7 h-7 text-primary-foreground animate-pulse" />
-                    </div>
+                    <motion.div
+                      className="w-20 h-20 rounded-full flex items-center justify-center"
+                      style={{
+                        background: "radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, hsl(var(--secondary) / 0.2) 60%, transparent 100%)",
+                        boxShadow: "0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--secondary) / 0.15)",
+                      }}
+                      animate={{
+                        scale: [1, 1.15, 1],
+                        boxShadow: [
+                          "0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--secondary) / 0.15)",
+                          "0 0 50px hsl(var(--primary) / 0.5), 0 0 80px hsl(var(--secondary) / 0.25)",
+                          "0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--secondary) / 0.15)",
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <motion.div
+                        className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                      >
+                        <Search className="w-6 h-6 text-primary-foreground" />
+                      </motion.div>
+                    </motion.div>
                   </div>
+
+                  {/* Floating silhouettes */}
+                  {[0, 1, 2, 3].map((i) => {
+                    const angle = (i * 90) * (Math.PI / 180);
+                    const radius = 75;
+                    return (
+                      <motion.div
+                        key={`sil-${i}`}
+                        className="absolute w-8 h-8 rounded-full bg-muted/30 border border-border/30 flex items-center justify-center"
+                        style={{
+                          left: `calc(50% + ${Math.cos(angle) * radius}px - 16px)`,
+                          top: `calc(50% + ${Math.sin(angle) * radius}px - 16px)`,
+                        }}
+                        animate={{
+                          x: [0, Math.cos(angle + 0.5) * 15, 0],
+                          y: [0, Math.sin(angle + 0.5) * 15, 0],
+                          opacity: [0.3, 0.7, 0.3],
+                          scale: [0.8, 1, 0.8],
+                        }}
+                        transition={{
+                          duration: 3 + i * 0.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.4,
+                        }}
+                      >
+                        <Users className="w-4 h-4 text-muted-foreground/50" />
+                      </motion.div>
+                    );
+                  })}
+
+                  {/* Rotating gradient border */}
                   <motion.div
-                    className="absolute top-1/2 left-1/2 w-1/2 h-0.5 origin-left"
+                    className="absolute -inset-3 rounded-full opacity-30"
                     style={{
-                      background:
-                        "linear-gradient(90deg, hsl(190 100% 50% / 0.6), transparent)",
+                      background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary)))",
+                      mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px))",
+                      WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px))",
                     }}
                     animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
                   />
                 </div>
-                <h2 className="text-lg sm:text-xl font-bold text-foreground mb-2 neon-text-blue text-center">
-                  Searching for a stranger…
-                </h2>
+
+                {/* Typewriter search text */}
+                <motion.h2
+                  className="text-lg sm:text-xl font-bold text-foreground mb-2 text-center"
+                  style={{
+                    textShadow: "0 0 12px hsl(var(--primary) / 0.4), 0 0 24px hsl(var(--primary) / 0.2)",
+                  }}
+                >
+                  <SearchingText />
+                </motion.h2>
                 <p className="text-muted-foreground text-sm mb-2 text-center">
                   Finding someone for you
                 </p>

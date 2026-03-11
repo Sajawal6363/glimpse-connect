@@ -194,7 +194,7 @@ const StreamHistory = () => {
                     <Link to={`/profile/${entry.stranger.username}`}>
                       <Avatar className="w-11 h-11 ring-2 ring-primary/20">
                         <PrivateAvatarImage
-                          path={entry.stranger.avatar_url}
+                          src={entry.stranger.avatar_url}
                           alt={entry.stranger.username}
                         />
                         <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">

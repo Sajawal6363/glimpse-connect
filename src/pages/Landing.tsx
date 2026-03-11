@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
+import { useEffect, useRef, useCallback } from "react";
 import {
   Video,
   Shield,
@@ -137,60 +138,235 @@ const photoPositions: { x: string; y: string; size: string; rotate: number }[] =
     { x: "75%", y: "48%", size: "w-18 h-18 sm:w-24 sm:h-24", rotate: -6 },
   ];
 
+/* ─── Connection Lines SVG ─── */
+const connectionPairs = [
+  [0, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [8, 10], [9, 11], [0, 8], [1, 9],
+];
+
+const ConnectionLines = () => (
+  <svg className="absolute inset-0 w-full h-full pointer-events-none z-[1]" aria-hidden="true">
+    <defs>
+      <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="hsl(190 100% 50% / 0.15)" />
+        <stop offset="50%" stopColor="hsl(270 80% 62% / 0.2)" />
+        <stop offset="100%" stopColor="hsl(190 100% 50% / 0.1)" />
+      </linearGradient>
+    </defs>
+    {connectionPairs.map(([a, b], i) => {
+      const pA = photoPositions[a];
+      const pB = photoPositions[b];
+      return (
+        <motion.line
+          key={i}
+          x1={pA.x} y1={pA.y} x2={pB.x} y2={pB.y}
+          stroke="url(#line-grad)"
+          strokeWidth="1"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: [0, 0.4, 0.4, 0] }}
+          transition={{ duration: 6, delay: i * 0.8, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }}
+        />
+      );
+    })}
+  </svg>
+);
+
+/* ─── Royal Floating Photo Card ─── */
 const FloatingPhoto = ({
   photo,
   pos,
   index,
+  mouseX,
+  mouseY,
 }: {
   photo: (typeof floatingPhotos)[0];
   pos: (typeof photoPositions)[0];
   index: number;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
 }) => {
+  const depth = 0.5 + (index % 4) * 0.15;
+  const parallaxX = useTransform(mouseX, [0, 1], [-12 * depth, 12 * depth]);
+  const parallaxY = useTransform(mouseY, [0, 1], [-8 * depth, 8 * depth]);
+  const floatDuration = 3.5 + (index % 5) * 0.6;
+  const breathDuration = 4 + (index % 3) * 0.8;
+
   return (
     <motion.div
-      className="absolute z-0 pointer-events-none"
-      style={{ left: pos.x, top: pos.y }}
-      initial={{ opacity: 0, scale: 0.7, rotate: pos.rotate }}
+      className="absolute z-0"
+      style={{ left: pos.x, top: pos.y, x: parallaxX, y: parallaxY, perspective: 800 }}
+      initial={{ opacity: 0, scale: 0, rotate: pos.rotate + 15, filter: "blur(12px)" }}
       animate={{
-        opacity: [0, 0.55, 0.55, 0],
-        scale: [0.7, 1, 1, 0.85],
-        y: [20, 0, -10, -25],
+        opacity: [0, 0.7, 0.7, 0],
+        scale: [0, 1.05, 1, 0.9],
+        rotate: [pos.rotate + 15, pos.rotate, pos.rotate - 2, pos.rotate],
+        filter: ["blur(12px)", "blur(0px)", "blur(0px)", "blur(6px)"],
       }}
       transition={{
-        duration: 8,
-        delay: index * 1.2,
+        duration: 10,
+        delay: index * 0.9,
         repeat: Infinity,
-        repeatDelay: floatingPhotos.length * 1.2 - 8 + 3,
+        repeatDelay: Math.max(0, floatingPhotos.length * 0.9 - 10 + 2),
         ease: "easeInOut",
       }}
     >
-      <div
-        className={`${pos.size} rounded-2xl overflow-hidden ring-2 ring-white/10 shadow-2xl shadow-primary/10`}
-        style={{ transform: `rotate(${pos.rotate}deg)` }}
+      <motion.div
+        animate={{
+          y: [-6, 6, -6],
+          rotateX: [-2, 3, -2],
+          rotateY: [2, -3, 2],
+          scale: [0.97, 1.03, 0.97],
+        }}
+        transition={{
+          y: { duration: floatDuration, repeat: Infinity, ease: "easeInOut" },
+          rotateX: { duration: floatDuration + 0.5, repeat: Infinity, ease: "easeInOut" },
+          rotateY: { duration: floatDuration + 1, repeat: Infinity, ease: "easeInOut" },
+          scale: { duration: breathDuration, repeat: Infinity, ease: "easeInOut" },
+        }}
+        style={{ transformStyle: "preserve-3d" }}
       >
-        <img
-          src={photo.src}
-          alt={photo.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-        {/* Gradient overlay with name */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <div className="absolute bottom-1.5 left-2 right-2">
-          <p className="text-[10px] sm:text-xs font-semibold text-white truncate drop-shadow-lg">
-            {photo.name}
-          </p>
-          <p className="text-[8px] sm:text-[10px] text-white/70">
-            {photo.country}
-          </p>
+        <div
+          className={`${pos.size} rounded-2xl overflow-hidden shadow-2xl shadow-primary/20 royal-card-glow relative`}
+          style={{ transform: `rotate(${pos.rotate}deg)` }}
+        >
+          <div className="absolute inset-0 z-20 pointer-events-none royal-shimmer-sweep" />
+          <div className="absolute inset-0 z-10 rounded-2xl royal-neon-ring pointer-events-none" />
+          <img src={photo.src} alt={photo.name} className="w-full h-full object-cover" loading="lazy" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-[5]" />
+          <div className="absolute bottom-1.5 left-2 right-2 z-[6]">
+            <p className="text-[10px] sm:text-xs font-semibold text-white truncate drop-shadow-lg">{photo.name}</p>
+            <p className="text-[8px] sm:text-[10px] text-white/70">{photo.country}</p>
+          </div>
+          <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm rounded-full px-1.5 py-0.5 z-[6]">
+            <span className="w-1.5 h-1.5 bg-neon-green rounded-full animate-pulse" />
+            <span className="text-[8px] text-white/80 font-medium">Live</span>
+          </div>
         </div>
-        {/* Live dot */}
-        <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm rounded-full px-1.5 py-0.5">
-          <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-          <span className="text-[8px] text-white/80 font-medium">Live</span>
-        </div>
-      </div>
+      </motion.div>
     </motion.div>
+  );
+};
+
+/* ─── Hero Section with Royal Floating Cards ─── */
+const HeroSection = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseX.set((e.clientX - rect.left) / rect.width);
+      mouseY.set((e.clientY - rect.top) / rect.height);
+    },
+    [mouseX, mouseY],
+  );
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("mousemove", handleMouseMove);
+    return () => el.removeEventListener("mousemove", handleMouseMove);
+  }, [handleMouseMove]);
+
+  return (
+    <section
+      ref={containerRef}
+      className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-20 max-w-5xl mx-auto min-h-[90vh]"
+    >
+      {/* Royal floating photos behind hero content */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <ConnectionLines />
+        {floatingPhotos.map((photo, i) => (
+          <FloatingPhoto
+            key={photo.name}
+            photo={photo}
+            pos={photoPositions[i]}
+            index={i}
+            mouseX={mouseX}
+            mouseY={mouseY}
+          />
+        ))}
+        {/* Center vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 55% 60% at 50% 45%, hsl(var(--background) / 0.92) 0%, hsl(var(--background) / 0.6) 55%, transparent 100%)",
+          }}
+        />
+      </div>
+
+      <motion.div
+        className="relative z-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+      >
+        <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-8 text-sm text-muted-foreground">
+          <span className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+          10,247 people streaming right now
+        </div>
+
+        <h1 className="text-5xl md:text-7xl font-display font-bold leading-tight mb-6">
+          <span className="bg-gradient-to-r from-primary via-secondary to-neon-green bg-clip-text text-transparent animate-gradient">
+            Meet Anyone.
+          </span>
+          <br />
+          <span className="text-foreground">Anywhere. Instantly.</span>
+        </h1>
+
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          The next-generation stranger video platform with AI safety, smart
+          matching, and a social experience unlike anything you've seen before.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Button
+            size="lg"
+            className="bg-gradient-to-r from-primary to-secondary text-primary-foreground font-bold text-lg px-8 py-6 rounded-2xl neon-glow-blue hover:scale-105 transition-transform"
+            asChild
+          >
+            <Link to={isAuthenticated ? "/stream" : "/register"}>
+              Start Streaming <ArrowRight className="ml-2 w-5 h-5" />
+            </Link>
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="border-border/50 text-muted-foreground hover:text-foreground px-8 py-6 rounded-2xl glass"
+            asChild
+          >
+            <Link to="/explore">Explore Users</Link>
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Stats */}
+      <motion.div
+        className="relative z-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.3 }}
+      >
+        <div className="flex flex-wrap justify-center gap-8 mt-20">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="glass rounded-2xl px-8 py-5 text-center min-w-[160px]"
+            >
+              <stat.icon className="w-5 h-5 text-primary mx-auto mb-2" />
+              <div className="text-3xl font-bold text-foreground neon-text-blue">
+                {stat.value}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
   );
 };
 
@@ -256,102 +432,7 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Hero with Floating Photo Background */}
-      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-20 max-w-5xl mx-auto min-h-[90vh]">
-        {/* Floating photos behind the hero content */}
-        <div
-          className="absolute inset-0 overflow-hidden pointer-events-none"
-          aria-hidden="true"
-        >
-          {floatingPhotos.map((photo, i) => (
-            <FloatingPhoto
-              key={photo.name}
-              photo={photo}
-              pos={photoPositions[i]}
-              index={i}
-            />
-          ))}
-          {/* Strong center vignette so hero text stays readable */}
-          <div
-            className="absolute inset-0 bg-radial-gradient pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse 55% 60% at 50% 45%, hsl(var(--background) / 0.92) 0%, hsl(var(--background) / 0.6) 55%, transparent 100%)",
-            }}
-          />
-        </div>
-
-        <motion.div
-          className="relative z-10"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-        >
-          <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-8 text-sm text-muted-foreground">
-            <span className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
-            10,247 people streaming right now
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-display font-bold leading-tight mb-6">
-            <span className="bg-gradient-to-r from-primary via-secondary to-neon-green bg-clip-text text-transparent animate-gradient">
-              Meet Anyone.
-            </span>
-            <br />
-            <span className="text-foreground">Anywhere. Instantly.</span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            The next-generation stranger video platform with AI safety, smart
-            matching, and a social experience unlike anything you've seen
-            before.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-primary to-secondary text-primary-foreground font-bold text-lg px-8 py-6 rounded-2xl neon-glow-blue hover:scale-105 transition-transform"
-              asChild
-            >
-              <Link to={isAuthenticated ? "/stream" : "/register"}>
-                Start Streaming <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-border/50 text-muted-foreground hover:text-foreground px-8 py-6 rounded-2xl glass"
-              asChild
-            >
-              <Link to="/explore">Explore Users</Link>
-            </Button>
-          </div>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          className="relative z-10"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-        >
-          <div className="flex flex-wrap justify-center gap-8 mt-20">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="glass rounded-2xl px-8 py-5 text-center min-w-[160px]"
-              >
-                <stat.icon className="w-5 h-5 text-primary mx-auto mb-2" />
-                <div className="text-3xl font-bold text-foreground neon-text-blue">
-                  {stat.value}
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      </section>
+      <HeroSection isAuthenticated={isAuthenticated} />
 
       {/* Features */}
       <section className="relative z-10 px-6 pb-24 max-w-6xl mx-auto">
