@@ -1521,12 +1521,11 @@ const Stream = () => {
                         rotateX: `${55 + i * 12}deg`,
                         transformStyle: "preserve-3d",
                       }}
-                      animate={{ rotateZ: 360 }}
+                      animate={{ rotateZ: i % 2 === 0 ? 360 : -360 }}
                       transition={{
                         duration: 4 + i * 2,
                         repeat: Infinity,
                         ease: "linear",
-                        direction: i % 2 === 0 ? "normal" : "reverse",
                       }}
                     >
                       {/* Orbiting dots */}
