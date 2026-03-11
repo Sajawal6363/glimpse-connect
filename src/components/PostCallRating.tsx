@@ -118,7 +118,9 @@ export default function PostCallRating({
               </Avatar>
 
               <div className="text-center">
-                <h3 className="text-lg font-bold text-foreground">How was your call?</h3>
+                <h3 className="text-lg font-bold text-foreground">
+                  How was your call?
+                </h3>
                 {otherUser && (
                   <p className="text-muted-foreground text-sm mt-0.5">
                     with @{otherUser.username} · {formatDuration(duration)}
@@ -135,7 +137,11 @@ export default function PostCallRating({
                       className="p-1"
                       initial={{ scale: 0, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.1 + i * 0.07, type: "spring", stiffness: 300 }}
+                      transition={{
+                        delay: 0.1 + i * 0.07,
+                        type: "spring",
+                        stiffness: 300,
+                      }}
                       whileHover={{ scale: 1.3 }}
                       whileTap={{ scale: 0.9 }}
                       onMouseEnter={() => setHovered(star)}
@@ -144,8 +150,14 @@ export default function PostCallRating({
                     >
                       <Star
                         className="w-9 h-9 transition-all duration-150"
-                        fill={star <= (hovered || rating) ? "#ffd700" : "transparent"}
-                        stroke={star <= (hovered || rating) ? "#ffd700" : "#6b7280"}
+                        fill={
+                          star <= (hovered || rating)
+                            ? "#ffd700"
+                            : "transparent"
+                        }
+                        stroke={
+                          star <= (hovered || rating) ? "#ffd700" : "#6b7280"
+                        }
                         style={{
                           filter:
                             star <= (hovered || rating)
@@ -173,7 +185,9 @@ export default function PostCallRating({
                       />
                     ))}
                   </div>
-                  <p className="text-sm text-muted-foreground">Thanks for rating!</p>
+                  <p className="text-sm text-muted-foreground">
+                    Thanks for rating!
+                  </p>
                 </motion.div>
               )}
 
@@ -207,7 +221,9 @@ export default function PostCallRating({
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">Auto-closes in {timeLeft}s</p>
+              <p className="text-xs text-muted-foreground">
+                Auto-closes in {timeLeft}s
+              </p>
             </div>
           </motion.div>
         </motion.div>

@@ -15,10 +15,34 @@ interface GiftTrayProps {
 }
 
 const RARITY_TABS = [
-  { key: "common", label: "Common", color: "text-white", border: "border-white/30", active: "bg-white/10 border-white/50" },
-  { key: "rare", label: "Rare", color: "text-cyan-400", border: "border-cyan-400/30", active: "bg-cyan-400/10 border-cyan-400/60" },
-  { key: "epic", label: "Epic", color: "text-purple-400", border: "border-purple-400/30", active: "bg-purple-400/10 border-purple-400/60" },
-  { key: "legendary", label: "Legendary", color: "text-yellow-400", border: "border-yellow-400/30", active: "bg-yellow-400/10 border-yellow-400/60" },
+  {
+    key: "common",
+    label: "Common",
+    color: "text-white",
+    border: "border-white/30",
+    active: "bg-white/10 border-white/50",
+  },
+  {
+    key: "rare",
+    label: "Rare",
+    color: "text-cyan-400",
+    border: "border-cyan-400/30",
+    active: "bg-cyan-400/10 border-cyan-400/60",
+  },
+  {
+    key: "epic",
+    label: "Epic",
+    color: "text-purple-400",
+    border: "border-purple-400/30",
+    active: "bg-purple-400/10 border-purple-400/60",
+  },
+  {
+    key: "legendary",
+    label: "Legendary",
+    color: "text-yellow-400",
+    border: "border-yellow-400/30",
+    active: "bg-yellow-400/10 border-yellow-400/60",
+  },
 ] as const;
 
 const RARITY_GLOW: Record<string, string> = {
@@ -35,8 +59,18 @@ const RARITY_BORDER_SELECTED: Record<string, string> = {
   legendary: "border-yellow-400",
 };
 
-export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSending, isPremium }: GiftTrayProps) {
-  const [activeRarity, setActiveRarity] = useState<"common" | "rare" | "epic" | "legendary">("common");
+export default function GiftTray({
+  isOpen,
+  onClose,
+  gifts,
+  wallet,
+  onSend,
+  isSending,
+  isPremium,
+}: GiftTrayProps) {
+  const [activeRarity, setActiveRarity] = useState<
+    "common" | "rare" | "epic" | "legendary"
+  >("common");
   const [selected, setSelected] = useState<Gift | null>(null);
   const coins = wallet?.coins ?? 0;
 
@@ -84,7 +118,9 @@ export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSen
             <div className="flex items-center justify-between px-5 py-3 border-b border-border/40">
               <div className="flex items-center gap-2">
                 <Coins className="w-5 h-5 text-yellow-400" />
-                <span className="font-bold text-yellow-400 text-lg">{coins.toLocaleString()}</span>
+                <span className="font-bold text-yellow-400 text-lg">
+                  {coins.toLocaleString()}
+                </span>
                 <span className="text-muted-foreground text-sm">coins</span>
               </div>
               <div className="flex items-center gap-2">
@@ -97,7 +133,12 @@ export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSen
                   <ShoppingBag className="w-3 h-3 mr-1" />
                   Top Up
                 </Button>
-                <Button variant="ghost" size="icon" className="w-7 h-7" onClick={onClose}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-7 h-7"
+                  onClick={onClose}
+                >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -108,7 +149,10 @@ export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSen
               {RARITY_TABS.map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => { setActiveRarity(tab.key); setSelected(null); }}
+                  onClick={() => {
+                    setActiveRarity(tab.key);
+                    setSelected(null);
+                  }}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold border transition-all duration-200 ${tab.color} ${activeRarity === tab.key ? tab.active : `${tab.border} opacity-60`}`}
                 >
                   {tab.label}
@@ -117,7 +161,10 @@ export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSen
             </div>
 
             {/* Gift grid */}
-            <div className="overflow-y-auto px-4" style={{ maxHeight: "calc(70vh - 200px)" }}>
+            <div
+              className="overflow-y-auto px-4"
+              style={{ maxHeight: "calc(70vh - 200px)" }}
+            >
               <div className="grid grid-cols-4 gap-3 pb-4">
                 {filtered.map((gift) => {
                   const affordable = canAfford(gift);
@@ -146,7 +193,9 @@ export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSen
                         </div>
                       )}
                       {gift.is_premium_only && (
-                        <span className="absolute -top-1 -right-1 text-xs z-20">👑</span>
+                        <span className="absolute -top-1 -right-1 text-xs z-20">
+                          👑
+                        </span>
                       )}
                       <span className="text-3xl">{gift.emoji}</span>
                       <span className="text-[10px] font-medium text-foreground text-center leading-tight">
@@ -169,7 +218,9 @@ export default function GiftTray({ isOpen, onClose, gifts, wallet, onSend, isSen
                     <span className="text-2xl">{selected.emoji}</span>
                     <div>
                       <p className="text-sm font-semibold">{selected.name}</p>
-                      <p className="text-xs text-yellow-400">💰{selected.coin_cost} coins</p>
+                      <p className="text-xs text-yellow-400">
+                        💰{selected.coin_cost} coins
+                      </p>
                     </div>
                   </div>
                   <motion.div whileTap={{ scale: 0.95 }}>

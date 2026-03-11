@@ -27,7 +27,13 @@ function getRarity(cost: number): string {
   return "common";
 }
 
-function GiftRow({ gift, type }: { gift: GiftTransaction; type: "sent" | "received" }) {
+function GiftRow({
+  gift,
+  type,
+}: {
+  gift: GiftTransaction;
+  type: "sent" | "received";
+}) {
   const isSent = type === "sent";
   const person = isSent ? gift.receiver : gift.sender;
   const rarity = getRarity(gift.coin_cost);
@@ -47,22 +53,32 @@ function GiftRow({ gift, type }: { gift: GiftTransaction; type: "sent" | "receiv
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-xl">{gift.gift_emoji}</span>
-          <span className="font-semibold text-foreground text-sm truncate">{gift.gift_name}</span>
+          <span className="font-semibold text-foreground text-sm truncate">
+            {gift.gift_name}
+          </span>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {isSent ? "To" : "From"}{" "}
-          <span className="text-foreground font-medium">@{person?.username ?? "?"}</span>
+          <span className="text-foreground font-medium">
+            @{person?.username ?? "?"}
+          </span>
           {" · "}
           {formatDistanceToNow(new Date(gift.created_at), { addSuffix: true })}
         </p>
       </div>
       <div className="text-right shrink-0">
         {isSent ? (
-          <span className="text-sm font-bold text-red-400">-{gift.coin_cost}💰</span>
+          <span className="text-sm font-bold text-red-400">
+            -{gift.coin_cost}💰
+          </span>
         ) : (
-          <span className="text-sm font-bold text-green-400">+{gift.diamond_value}💎</span>
+          <span className="text-sm font-bold text-green-400">
+            +{gift.diamond_value}💎
+          </span>
         )}
-        <p className="text-xs text-muted-foreground capitalize mt-0.5">{gift.context.replace("_", " ")}</p>
+        <p className="text-xs text-muted-foreground capitalize mt-0.5">
+          {gift.context.replace("_", " ")}
+        </p>
       </div>
     </motion.div>
   );
@@ -72,18 +88,29 @@ function CoinRow({ tx }: { tx: CoinTransaction }) {
   const isCredit = tx.amount > 0;
   return (
     <div className="glass rounded-xl px-4 py-3 flex items-center gap-3 border border-border/30">
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isCredit ? "bg-green-400/10" : "bg-red-400/10"}`}>
-        {isCredit ? <Inbox className="w-4 h-4 text-green-400" /> : <Send className="w-4 h-4 text-red-400" />}
+      <div
+        className={`w-8 h-8 rounded-full flex items-center justify-center ${isCredit ? "bg-green-400/10" : "bg-red-400/10"}`}
+      >
+        {isCredit ? (
+          <Inbox className="w-4 h-4 text-green-400" />
+        ) : (
+          <Send className="w-4 h-4 text-red-400" />
+        )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{tx.description || tx.type}</p>
+        <p className="text-sm font-medium text-foreground truncate">
+          {tx.description || tx.type}
+        </p>
         <p className="text-xs text-muted-foreground">
           {formatDistanceToNow(new Date(tx.created_at), { addSuffix: true })}
         </p>
       </div>
       <div className="text-right">
-        <p className={`font-bold text-sm ${isCredit ? "text-green-400" : "text-red-400"}`}>
-          {isCredit ? "+" : ""}{tx.amount}💰
+        <p
+          className={`font-bold text-sm ${isCredit ? "text-green-400" : "text-red-400"}`}
+        >
+          {isCredit ? "+" : ""}
+          {tx.amount}💰
         </p>
         <p className="text-xs text-muted-foreground">bal: {tx.balance_after}</p>
       </div>
@@ -99,7 +126,17 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
 
 export default function GiftHistory() {
   const { user } = useAuthStore();
-  const { sentHistory, receivedHistory, coinTransactions, wallet, fetchSentGifts, fetchReceivedGifts, fetchCoinTransactions, fetchWallet, isLoading } = useGiftStore();
+  const {
+    sentHistory,
+    receivedHistory,
+    coinTransactions,
+    wallet,
+    fetchSentGifts,
+    fetchReceivedGifts,
+    fetchCoinTransactions,
+    fetchWallet,
+    isLoading,
+  } = useGiftStore();
   const [activeTab, setActiveTab] = useState<Tab>("received");
 
   useEffect(() => {
@@ -109,10 +146,19 @@ export default function GiftHistory() {
       fetchCoinTransactions(user.id);
       fetchWallet(user.id);
     }
-  }, [user, fetchSentGifts, fetchReceivedGifts, fetchCoinTransactions, fetchWallet]);
+  }, [
+    user,
+    fetchSentGifts,
+    fetchReceivedGifts,
+    fetchCoinTransactions,
+    fetchWallet,
+  ]);
 
   const totalSent = sentHistory.reduce((s, g) => s + g.coin_cost, 0);
-  const totalReceived = receivedHistory.reduce((s, g) => s + g.diamond_value, 0);
+  const totalReceived = receivedHistory.reduce(
+    (s, g) => s + g.diamond_value,
+    0,
+  );
 
   return (
     <AppLayout>
@@ -129,17 +175,33 @@ export default function GiftHistory() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-black text-foreground">Gift History</h1>
-            <p className="text-muted-foreground text-sm">Your gift transactions</p>
+            <h1 className="text-2xl font-black text-foreground">
+              Gift History
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Your gift transactions
+            </p>
           </div>
         </motion.div>
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {[
-            { label: "Balance", value: `💰${wallet?.coins ?? 0}`, sub: "coins" },
-            { label: "Sent", value: `💰${totalSent}`, sub: `${sentHistory.length} gifts` },
-            { label: "Earned", value: `💎${totalReceived}`, sub: `${receivedHistory.length} gifts` },
+            {
+              label: "Balance",
+              value: `💰${wallet?.coins ?? 0}`,
+              sub: "coins",
+            },
+            {
+              label: "Sent",
+              value: `💰${totalSent}`,
+              sub: `${sentHistory.length} gifts`,
+            },
+            {
+              label: "Earned",
+              value: `💎${totalReceived}`,
+              sub: `${receivedHistory.length} gifts`,
+            },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -150,7 +212,9 @@ export default function GiftHistory() {
             >
               <p className="text-lg font-black text-foreground">{stat.value}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{stat.sub}</p>
-              <p className="text-[10px] text-muted-foreground/60">{stat.label}</p>
+              <p className="text-[10px] text-muted-foreground/60">
+                {stat.label}
+              </p>
             </motion.div>
           ))}
         </div>
@@ -176,35 +240,49 @@ export default function GiftHistory() {
         {/* Content */}
         <div className="space-y-3">
           {isLoading && (
-            <div className="text-center text-muted-foreground py-10">Loading...</div>
+            <div className="text-center text-muted-foreground py-10">
+              Loading...
+            </div>
           )}
-          {!isLoading && activeTab === "sent" && (
-            sentHistory.length === 0 ? (
+          {!isLoading &&
+            activeTab === "sent" &&
+            (sentHistory.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
                 <p className="text-4xl mb-3">🎁</p>
                 <p>No gifts sent yet.</p>
                 <Link to="/gifts/shop">
-                  <Button variant="outline" className="mt-3" size="sm">Buy Coins</Button>
+                  <Button variant="outline" className="mt-3" size="sm">
+                    Buy Coins
+                  </Button>
                 </Link>
               </div>
-            ) : sentHistory.map((g) => <GiftRow key={g.id} gift={g} type="sent" />)
-          )}
-          {!isLoading && activeTab === "received" && (
-            receivedHistory.length === 0 ? (
+            ) : (
+              sentHistory.map((g) => (
+                <GiftRow key={g.id} gift={g} type="sent" />
+              ))
+            ))}
+          {!isLoading &&
+            activeTab === "received" &&
+            (receivedHistory.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
                 <p className="text-4xl mb-3">💎</p>
                 <p>No gifts received yet. Start streaming!</p>
               </div>
-            ) : receivedHistory.map((g) => <GiftRow key={g.id} gift={g} type="received" />)
-          )}
-          {!isLoading && activeTab === "coins" && (
-            coinTransactions.length === 0 ? (
+            ) : (
+              receivedHistory.map((g) => (
+                <GiftRow key={g.id} gift={g} type="received" />
+              ))
+            ))}
+          {!isLoading &&
+            activeTab === "coins" &&
+            (coinTransactions.length === 0 ? (
               <div className="text-center text-muted-foreground py-10">
                 <p className="text-4xl mb-3">💰</p>
                 <p>No transactions yet.</p>
               </div>
-            ) : coinTransactions.map((tx) => <CoinRow key={tx.id} tx={tx} />)
-          )}
+            ) : (
+              coinTransactions.map((tx) => <CoinRow key={tx.id} tx={tx} />)
+            ))}
         </div>
       </div>
     </AppLayout>

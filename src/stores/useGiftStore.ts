@@ -1,5 +1,13 @@
 import { create } from "zustand";
-import { supabase, type Gift, type GiftTransaction, type UserWallet, type CoinTransaction, type GiftLeaderboardEntry, type Profile } from "@/lib/supabase";
+import {
+  supabase,
+  type Gift,
+  type GiftTransaction,
+  type UserWallet,
+  type CoinTransaction,
+  type GiftLeaderboardEntry,
+  type Profile,
+} from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface GiftState {
@@ -33,7 +41,11 @@ interface GiftState {
   }) => Promise<GiftTransaction | null>;
 
   // Purchase coins (mock — real Stripe integration goes here)
-  purchaseCoins: (userId: string, coins: number, price: number) => Promise<void>;
+  purchaseCoins: (
+    userId: string,
+    coins: number,
+    price: number,
+  ) => Promise<void>;
 
   // History
   fetchSentGifts: (userId: string) => Promise<void>;
@@ -50,7 +62,10 @@ interface GiftState {
   removeIncomingGift: (id: string) => void;
 
   // Real-time subscription
-  subscribeToGifts: (userId: string, callback: (gift: GiftTransaction) => void) => void;
+  subscribeToGifts: (
+    userId: string,
+    callback: (gift: GiftTransaction) => void,
+  ) => void;
   unsubscribeFromGifts: () => void;
 }
 
@@ -83,7 +98,9 @@ export const useGiftStore = create<GiftState>((set, get) => ({
       .maybeSingle();
 
     if (!existing) {
-      await supabase.from("user_wallets").insert({ user_id: userId, coins: 0, diamonds: 0 });
+      await supabase
+        .from("user_wallets")
+        .insert({ user_id: userId, coins: 0, diamonds: 0 });
     }
     await get().fetchWallet(userId);
   },
@@ -103,7 +120,14 @@ export const useGiftStore = create<GiftState>((set, get) => ({
     return get().gifts.filter((g) => g.rarity === rarity);
   },
 
-  sendGift: async ({ senderId, receiverId, giftId, context, sessionId, groupId }) => {
+  sendGift: async ({
+    senderId,
+    receiverId,
+    giftId,
+    context,
+    sessionId,
+    groupId,
+  }) => {
     set({ isSending: true });
     try {
       const { data, error } = await supabase.rpc("send_gift", {
@@ -123,12 +147,17 @@ export const useGiftStore = create<GiftState>((set, get) => ({
       // Fetch the transaction for animation
       const { data: tx } = await supabase
         .from("gift_transactions")
-        .select("*, sender:profiles!sender_id(*), receiver:profiles!receiver_id(*)")
+        .select(
+          "*, sender:profiles!sender_id(*), receiver:profiles!receiver_id(*)",
+        )
         .eq("id", data)
         .single();
 
       if (tx) {
-        const txTyped = tx as GiftTransaction & { sender: Profile; receiver: Profile };
+        const txTyped = tx as GiftTransaction & {
+          sender: Profile;
+          receiver: Profile;
+        };
         get().triggerAnimation(txTyped);
         return txTyped;
       }
@@ -181,7 +210,9 @@ export const useGiftStore = create<GiftState>((set, get) => ({
   fetchSentGifts: async (userId: string) => {
     const { data } = await supabase
       .from("gift_transactions")
-      .select("*, receiver:profiles!receiver_id(id, username, name, avatar_url)")
+      .select(
+        "*, receiver:profiles!receiver_id(id, username, name, avatar_url)",
+      )
       .eq("sender_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -211,7 +242,9 @@ export const useGiftStore = create<GiftState>((set, get) => ({
   fetchLeaderboard: async () => {
     const { data } = await supabase
       .from("gift_leaderboard")
-      .select("*, profile:profiles!user_id(id, username, name, avatar_url, is_verified)")
+      .select(
+        "*, profile:profiles!user_id(id, username, name, avatar_url, is_verified)",
+      )
       .order("total_sent_value", { ascending: false })
       .limit(100);
     if (data) set({ leaderboard: data as unknown as GiftLeaderboardEntry[] });
@@ -240,7 +273,10 @@ export const useGiftStore = create<GiftState>((set, get) => ({
     }));
   },
 
-  subscribeToGifts: (userId: string, callback: (gift: GiftTransaction) => void) => {
+  subscribeToGifts: (
+    userId: string,
+    callback: (gift: GiftTransaction) => void,
+  ) => {
     supabase
       .channel(`gifts:${userId}`)
       .on(
@@ -263,7 +299,7 @@ export const useGiftStore = create<GiftState>((set, get) => ({
           callback(gift);
           get().addIncomingGift(gift);
           get().triggerAnimation(gift);
-        }
+        },
       )
       .subscribe();
   },

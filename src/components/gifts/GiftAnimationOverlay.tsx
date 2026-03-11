@@ -17,11 +17,26 @@ const RARITY_COLORS = {
 
 function getAnimationType(gift: GiftTransaction): string {
   const slug = gift.gift_name.toLowerCase().replace(/\s+/g, "-");
-  const epicSlugs = ["crown", "sports-car", "yacht", "fireworks", "dragon", "castle"];
+  const epicSlugs = [
+    "crown",
+    "sports-car",
+    "yacht",
+    "fireworks",
+    "dragon",
+    "castle",
+  ];
   const legendSlugs = ["galaxy", "planet", "universe", "connectlive-crown"];
-  const rareSlugs = ["neon-heart", "fire", "lightning", "diamond-ring", "rocket", "unicorn"];
+  const rareSlugs = [
+    "neon-heart",
+    "fire",
+    "lightning",
+    "diamond-ring",
+    "rocket",
+    "unicorn",
+  ];
   if (legendSlugs.some((s) => slug.includes(s.split("-")[0]))) return "premium";
-  if (epicSlugs.some((s) => slug.includes(s.split("-")[0]))) return "fullscreen";
+  if (epicSlugs.some((s) => slug.includes(s.split("-")[0])))
+    return "fullscreen";
   if (rareSlugs.some((s) => slug.includes(s.split("-")[0]))) return "burst";
   return "float";
 }
@@ -34,7 +49,13 @@ function getRarityFromCost(cost: number): keyof typeof RARITY_COLORS {
 }
 
 // --- Float Animation (Common) ---
-function FloatAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplete: () => void }) {
+function FloatAnimation({
+  gift,
+  onComplete,
+}: {
+  gift: GiftTransaction;
+  onComplete: () => void;
+}) {
   const rarity = getRarityFromCost(gift.coin_cost);
   const colors = RARITY_COLORS[rarity];
 
@@ -76,8 +97,8 @@ function FloatAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplet
             style={{ background: colors[i % colors.length] }}
             initial={{ x: 0, y: 0, opacity: 0, scale: 0 }}
             animate={{
-              x: [0, (Math.cos((i / 8) * Math.PI * 2) * 60)],
-              y: [0, (Math.sin((i / 8) * Math.PI * 2) * 60) - 80],
+              x: [0, Math.cos((i / 8) * Math.PI * 2) * 60],
+              y: [0, Math.sin((i / 8) * Math.PI * 2) * 60 - 80],
               opacity: [0, 1, 0],
               scale: [0, 1, 0],
             }}
@@ -90,7 +111,13 @@ function FloatAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplet
 }
 
 // --- Burst Animation (Rare) ---
-function BurstAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplete: () => void }) {
+function BurstAnimation({
+  gift,
+  onComplete,
+}: {
+  gift: GiftTransaction;
+  onComplete: () => void;
+}) {
   const rarity = getRarityFromCost(gift.coin_cost);
   const colors = RARITY_COLORS[rarity];
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -144,12 +171,16 @@ function BurstAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplet
           </span>
           <motion.span
             className="text-base font-bold px-4 py-1.5 rounded-full glass"
-            style={{ color: colors[0], textShadow: `0 0 15px ${colors[0]}, 0 0 30px ${colors[0]}` }}
+            style={{
+              color: colors[0],
+              textShadow: `0 0 15px ${colors[0]}, 0 0 30px ${colors[0]}`,
+            }}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: [0, 1, 1, 0], y: [10, 0, 0, -5] }}
             transition={{ duration: 2.8, delay: 0.5 }}
           >
-            {gift.gift_emoji} {gift.gift_name} from @{gift.sender?.username ?? "someone"}
+            {gift.gift_emoji} {gift.gift_name} from @
+            {gift.sender?.username ?? "someone"}
           </motion.span>
         </motion.div>
       </div>
@@ -165,7 +196,13 @@ function BurstAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplet
 }
 
 // --- Fullscreen Animation (Epic) ---
-function FullscreenAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplete: () => void }) {
+function FullscreenAnimation({
+  gift,
+  onComplete,
+}: {
+  gift: GiftTransaction;
+  onComplete: () => void;
+}) {
   const colors = RARITY_COLORS.epic;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -176,11 +213,23 @@ function FullscreenAnimation({ gift, onComplete }: { gift: GiftTransaction; onCo
       const engine = new GiftParticleEngine(canvasRef.current);
       engine.start();
       setTimeout(() => {
-        engine.emitFireworks(window.innerWidth * 0.3, window.innerHeight * 0.4, colors);
-        engine.emitFireworks(window.innerWidth * 0.7, window.innerHeight * 0.3, ["#ff6b6b", "#ffd93d", "#6bcb77"]);
+        engine.emitFireworks(
+          window.innerWidth * 0.3,
+          window.innerHeight * 0.4,
+          colors,
+        );
+        engine.emitFireworks(
+          window.innerWidth * 0.7,
+          window.innerHeight * 0.3,
+          ["#ff6b6b", "#ffd93d", "#6bcb77"],
+        );
       }, 500);
       setTimeout(() => {
-        engine.emitFireworks(window.innerWidth * 0.5, window.innerHeight * 0.5, colors);
+        engine.emitFireworks(
+          window.innerWidth * 0.5,
+          window.innerHeight * 0.5,
+          colors,
+        );
       }, 1500);
       return () => {
         clearTimeout(t);
@@ -203,8 +252,17 @@ function FullscreenAnimation({ gift, onComplete }: { gift: GiftTransaction; onCo
         <motion.span
           className="text-[10rem] leading-none"
           initial={{ scale: 0, rotate: -20, opacity: 0 }}
-          animate={{ scale: [0, 1.5, 1.2], rotate: [-20, 10, 0], opacity: [0, 1, 1] }}
-          transition={{ duration: 0.8, delay: 0.2, type: "spring", stiffness: 200 }}
+          animate={{
+            scale: [0, 1.5, 1.2],
+            rotate: [-20, 10, 0],
+            opacity: [0, 1, 1],
+          }}
+          transition={{
+            duration: 0.8,
+            delay: 0.2,
+            type: "spring",
+            stiffness: 200,
+          }}
         >
           {gift.gift_emoji}
         </motion.span>
@@ -216,7 +274,10 @@ function FullscreenAnimation({ gift, onComplete }: { gift: GiftTransaction; onCo
         >
           <p
             className="text-2xl font-bold"
-            style={{ color: colors[0], textShadow: `0 0 20px ${colors[0]}, 0 0 40px ${colors[0]}` }}
+            style={{
+              color: colors[0],
+              textShadow: `0 0 20px ${colors[0]}, 0 0 40px ${colors[0]}`,
+            }}
           >
             {gift.gift_name}
           </p>
@@ -230,7 +291,13 @@ function FullscreenAnimation({ gift, onComplete }: { gift: GiftTransaction; onCo
 }
 
 // --- Premium Animation (Legendary) ---
-function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onComplete: () => void }) {
+function PremiumAnimation({
+  gift,
+  onComplete,
+}: {
+  gift: GiftTransaction;
+  onComplete: () => void;
+}) {
   const colors = RARITY_COLORS.legendary;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -256,8 +323,16 @@ function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onCompl
         engine.emitConfetti(80);
       }, 1500);
       setTimeout(() => {
-        engine.emitFireworks(window.innerWidth * 0.25, window.innerHeight * 0.3, colors);
-        engine.emitFireworks(window.innerWidth * 0.75, window.innerHeight * 0.3, colors);
+        engine.emitFireworks(
+          window.innerWidth * 0.25,
+          window.innerHeight * 0.3,
+          colors,
+        );
+        engine.emitFireworks(
+          window.innerWidth * 0.75,
+          window.innerHeight * 0.3,
+          colors,
+        );
       }, 2500);
       return () => {
         clearTimeout(t);
@@ -273,7 +348,11 @@ function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onCompl
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { delay: 1.5 + i * 0.08, type: "spring" as const, stiffness: 200 },
+      transition: {
+        delay: 1.5 + i * 0.08,
+        type: "spring" as const,
+        stiffness: 200,
+      },
     }),
   };
 
@@ -306,7 +385,10 @@ function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onCompl
               initial="hidden"
               animate="visible"
               className="text-4xl font-black tracking-wider"
-              style={{ color: colors[0], textShadow: `0 0 20px ${colors[0]}, 0 0 40px ${colors[1]}` }}
+              style={{
+                color: colors[0],
+                textShadow: `0 0 20px ${colors[0]}, 0 0 40px ${colors[1]}`,
+              }}
             >
               {char}
             </motion.span>
@@ -317,8 +399,15 @@ function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onCompl
           className="text-[9rem] leading-none"
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: [0, 2, 1.3, 1.5], opacity: [0, 1, 1, 1] }}
-          transition={{ duration: 1.2, delay: 0.3, type: "spring", stiffness: 120 }}
-          style={{ filter: `drop-shadow(0 0 30px ${colors[0]}) drop-shadow(0 0 60px ${colors[1]})` }}
+          transition={{
+            duration: 1.2,
+            delay: 0.3,
+            type: "spring",
+            stiffness: 120,
+          }}
+          style={{
+            filter: `drop-shadow(0 0 30px ${colors[0]}) drop-shadow(0 0 60px ${colors[1]})`,
+          }}
         >
           {gift.gift_emoji}
         </motion.span>
@@ -331,7 +420,10 @@ function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onCompl
         >
           <p
             className="text-3xl font-bold"
-            style={{ color: colors[0], textShadow: `0 0 25px ${colors[0]}, 0 0 50px ${colors[1]}` }}
+            style={{
+              color: colors[0],
+              textShadow: `0 0 25px ${colors[0]}, 0 0 50px ${colors[1]}`,
+            }}
           >
             {gift.gift_name}
           </p>
@@ -353,7 +445,10 @@ function PremiumAnimation({ gift, onComplete }: { gift: GiftTransaction; onCompl
 }
 
 // --- Main Overlay ---
-export default function GiftAnimationOverlay({ activeGift, onComplete }: GiftAnimationOverlayProps) {
+export default function GiftAnimationOverlay({
+  activeGift,
+  onComplete,
+}: GiftAnimationOverlayProps) {
   return (
     <AnimatePresence>
       {activeGift && (
@@ -369,13 +464,24 @@ export default function GiftAnimationOverlay({ activeGift, onComplete }: GiftAni
             const type = getAnimationType(activeGift);
             switch (type) {
               case "premium":
-                return <PremiumAnimation gift={activeGift} onComplete={onComplete} />;
+                return (
+                  <PremiumAnimation gift={activeGift} onComplete={onComplete} />
+                );
               case "fullscreen":
-                return <FullscreenAnimation gift={activeGift} onComplete={onComplete} />;
+                return (
+                  <FullscreenAnimation
+                    gift={activeGift}
+                    onComplete={onComplete}
+                  />
+                );
               case "burst":
-                return <BurstAnimation gift={activeGift} onComplete={onComplete} />;
+                return (
+                  <BurstAnimation gift={activeGift} onComplete={onComplete} />
+                );
               default:
-                return <FloatAnimation gift={activeGift} onComplete={onComplete} />;
+                return (
+                  <FloatAnimation gift={activeGift} onComplete={onComplete} />
+                );
             }
           })()}
         </motion.div>

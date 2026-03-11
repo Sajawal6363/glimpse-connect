@@ -132,17 +132,24 @@ export interface StreamSession {
   duration: number | null;
   was_skipped: boolean;
   was_reported: boolean;
-  call_type: 'random' | 'friend' | 'group';
+  call_type: "random" | "friend" | "group";
   group_id: string | null;
   initiator_id: string | null;
-  end_reason: 'normal' | 'skipped' | 'reported' | 'disconnected' | 'declined' | 'missed' | 'timeout';
+  end_reason:
+    | "normal"
+    | "skipped"
+    | "reported"
+    | "disconnected"
+    | "declined"
+    | "missed"
+    | "timeout";
   user1_followed_user2: boolean;
   user2_followed_user1: boolean;
   gifts_sent_count: number;
   gifts_received_count: number;
   gifts_value_sent: number;
   gifts_value_received: number;
-  connection_quality: 'good' | 'fair' | 'poor';
+  connection_quality: "good" | "fair" | "poor";
   user1_rating: number | null;
   user2_rating: number | null;
   other_user?: Profile;
@@ -179,8 +186,8 @@ export interface Gift {
   description: string;
   emoji: string;
   coin_cost: number;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  animation_type: 'float' | 'burst' | 'fullscreen' | 'premium';
+  rarity: "common" | "rare" | "epic" | "legendary";
+  animation_type: "float" | "burst" | "fullscreen" | "premium";
   animation_duration: number;
   sort_order: number;
   is_active: boolean;
@@ -196,7 +203,12 @@ export interface GiftTransaction {
   gift_emoji: string;
   coin_cost: number;
   diamond_value: number;
-  context: 'stream_random' | 'stream_friend' | 'stream_group' | 'chat' | 'profile';
+  context:
+    | "stream_random"
+    | "stream_friend"
+    | "stream_group"
+    | "chat"
+    | "profile";
   session_id: string | null;
   group_id: string | null;
   created_at: string;
@@ -207,7 +219,13 @@ export interface GiftTransaction {
 export interface CoinTransaction {
   id: string;
   user_id: string;
-  type: 'purchase' | 'gift_sent' | 'gift_received' | 'refund' | 'bonus' | 'admin';
+  type:
+    | "purchase"
+    | "gift_sent"
+    | "gift_received"
+    | "refund"
+    | "bonus"
+    | "admin";
   amount: number;
   balance_after: number;
   description: string;

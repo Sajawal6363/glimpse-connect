@@ -56,7 +56,8 @@ export class GiftParticleEngine {
     for (let i = 0; i < spikes * 2; i++) {
       const radius = i % 2 === 0 ? outerRadius : innerRadius;
       const angle = (i * Math.PI) / spikes;
-      if (i === 0) ctx.moveTo(radius * Math.cos(angle), radius * Math.sin(angle));
+      if (i === 0)
+        ctx.moveTo(radius * Math.cos(angle), radius * Math.sin(angle));
       else ctx.lineTo(radius * Math.cos(angle), radius * Math.sin(angle));
     }
     ctx.closePath();
@@ -131,12 +132,22 @@ export class GiftParticleEngine {
   }
 
   emitBurst(x: number, y: number, config: ParticleConfig) {
-    const { count, colors, shapes = ["circle"], speed = 8, spread = Math.PI * 2, gravity = 0.15, decay = 0.015, size = 6 } = config;
+    const {
+      count,
+      colors,
+      shapes = ["circle"],
+      speed = 8,
+      spread = Math.PI * 2,
+      gravity = 0.15,
+      decay = 0.015,
+      size = 6,
+    } = config;
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * spread - spread / 2;
       const vel = speed * (0.5 + Math.random() * 0.5);
       this.particles.push({
-        x, y,
+        x,
+        y,
         vx: Math.cos(angle) * vel,
         vy: Math.sin(angle) * vel,
         size: size * (0.5 + Math.random() * 0.8),
@@ -152,7 +163,15 @@ export class GiftParticleEngine {
   }
 
   emitConfetti(count: number) {
-    const colors = ["#ff6b6b", "#ffd93d", "#6bcb77", "#4d96ff", "#c77dff", "#ff9f1c", "#e63946"];
+    const colors = [
+      "#ff6b6b",
+      "#ffd93d",
+      "#6bcb77",
+      "#4d96ff",
+      "#c77dff",
+      "#ff9f1c",
+      "#e63946",
+    ];
     for (let i = 0; i < count; i++) {
       this.particles.push({
         x: Math.random() * this.canvas.width,
@@ -224,7 +243,9 @@ export class GiftParticleEngine {
 }
 
 // React hook for easy use
-export function useParticleEngine(canvasRef: React.RefObject<HTMLCanvasElement | null>) {
+export function useParticleEngine(
+  canvasRef: React.RefObject<HTMLCanvasElement | null>,
+) {
   const engineRef = useRef<GiftParticleEngine | null>(null);
 
   useEffect(() => {

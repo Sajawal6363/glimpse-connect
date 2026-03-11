@@ -20,7 +20,10 @@ function getRarity(cost: number): string {
   return "common";
 }
 
-export default function GiftNotificationToast({ gifts, onRemove }: GiftNotificationToastProps) {
+export default function GiftNotificationToast({
+  gifts,
+  onRemove,
+}: GiftNotificationToastProps) {
   return (
     <div className="absolute top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none">
       <AnimatePresence>
@@ -44,7 +47,9 @@ export default function GiftNotificationToast({ gifts, onRemove }: GiftNotificat
                   </span>{" "}
                   sent
                 </p>
-                <p className="text-sm font-bold text-foreground truncate">{gift.gift_name}</p>
+                <p className="text-sm font-bold text-foreground truncate">
+                  {gift.gift_name}
+                </p>
               </div>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {gift.coin_cost}💰

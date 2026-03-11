@@ -1,5 +1,12 @@
 import { useEffect } from "react";
-import { Bell, Search, Wifi, PanelLeftClose, PanelLeft, Coins } from "lucide-react";
+import {
+  Bell,
+  Search,
+  Wifi,
+  PanelLeftClose,
+  PanelLeft,
+  Coins,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,7 +66,9 @@ const Navbar = () => {
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 glass rounded-full border border-yellow-400/30 hover:border-yellow-400/60 transition-colors"
           >
             <Coins className="w-3.5 h-3.5 text-yellow-400" />
-            <span className="text-xs font-bold text-yellow-400">{wallet.coins.toLocaleString()}</span>
+            <span className="text-xs font-bold text-yellow-400">
+              {wallet.coins.toLocaleString()}
+            </span>
           </Link>
         )}
         <Button
