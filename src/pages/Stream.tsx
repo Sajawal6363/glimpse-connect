@@ -25,7 +25,6 @@ import {
   Wifi,
   Search,
   Shield,
-  Gift,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,12 +52,6 @@ import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
 import { supabase, type Profile } from "@/lib/supabase";
 import { useSocialStore } from "@/stores/useSocialStore";
-import { useGiftStore } from "@/stores/useGiftStore";
-import GiftTray from "@/components/gifts/GiftTray";
-import GiftAnimationOverlay from "@/components/gifts/GiftAnimationOverlay";
-import GiftNotificationToast from "@/components/gifts/GiftNotificationToast";
-import PostCallRating from "@/components/PostCallRating";
-import { type Gift as GiftItem } from "@/lib/supabase";
 
 /* ─── Typewriter Search Text ─── */
 const searchText = "Searching for a stranger…";
@@ -181,28 +174,6 @@ const Stream = () => {
     "none" | "pending_sent" | "pending_received" | "following" | "mutual"
   >("none");
   const [followLoading, setFollowLoading] = useState(false);
-
-  /* ─── Gifting system ─── */
-  const {
-    wallet,
-    gifts,
-    activeAnimation,
-    incomingGiftQueue,
-    isSending: isGiftSending,
-    fetchWallet,
-    ensureWallet,
-    fetchGifts,
-    sendGift,
-    triggerAnimation,
-    clearAnimation,
-    addIncomingGift,
-    removeIncomingGift,
-  } = useGiftStore();
-  const [showGiftTray, setShowGiftTray] = useState(false);
-  const [showPostCallRating, setShowPostCallRating] = useState(false);
-  const postCallSessionIdRef = useRef<string | null>(null);
-  const postCallMatchedUserRef = useRef<Profile | null>(null);
-  const postCallTimerRef = useRef<number>(0);
 
   /* ─── Stream session history ─── */
   const sessionIdRef = useRef<string | null>(null);
@@ -903,24 +874,6 @@ const Stream = () => {
               setChatOpen(true);
               setUnreadChatCount((c) => c + 1);
             }
-          } else if (data.type === "gift" && data.gift) {
-            // Incoming gift from stranger — show animation + toast
-            const incomingGift: import("@/lib/supabase").GiftTransaction = {
-              id: data.gift.id || crypto.randomUUID(),
-              sender_id: data.gift.sender_id || "",
-              receiver_id: user?.id || "",
-              gift_id: data.gift.gift_id || "",
-              gift_name: data.gift.gift_name || "Gift",
-              gift_emoji: data.gift.gift_emoji || "🎁",
-              coin_cost: data.gift.coin_cost || 0,
-              diamond_value: data.gift.diamond_value || 0,
-              context: "stream_random",
-              session_id: data.gift.session_id || null,
-              group_id: null,
-              created_at: new Date().toISOString(),
-            };
-            addIncomingGift(incomingGift);
-            triggerAnimation(incomingGift);
           }
         } catch {
           /* */
@@ -1114,14 +1067,6 @@ const Stream = () => {
   const handleEnd = useCallback(() => {
     console.log("[Stream] Ending stream completely");
 
-    // Capture data for post-call rating before clearing state
-    const wasConnected = stateRef.current === "connected";
-    if (wasConnected && matchedUser && sessionIdRef.current && timer >= 30) {
-      postCallSessionIdRef.current = sessionIdRef.current;
-      postCallMatchedUserRef.current = matchedUser;
-      postCallTimerRef.current = timer;
-    }
-
     // End the session record
     endSessionRecord(false);
 
@@ -1149,20 +1094,12 @@ const Stream = () => {
     setMatchedUser(null);
     setChatMessages([]);
     setChatOpen(false);
-    setShowGiftTray(false);
     setUnreadChatCount(0);
     setTimer(0);
     setRemainingTime(MAX_CALL_DURATION);
     setState("idle");
-
-    // Show post-call rating if call was long enough
-    if (wasConnected && postCallSessionIdRef.current) {
-      setTimeout(() => setShowPostCallRating(true), 300);
-    }
   }, [
     user?.id,
-    matchedUser,
-    timer,
     destroyPeer,
     stopLocalMedia,
     stopFaceDetection,
@@ -1272,48 +1209,6 @@ const Stream = () => {
     toast,
   ]);
 
-  /* ─── Send gift to stranger ─── */
-  const handleSendGift = useCallback(
-    async (gift: GiftItem) => {
-      if (!user?.id || !matchedUser?.id) return;
-      const transaction = await sendGift({
-        senderId: user.id,
-        receiverId: matchedUser.id,
-        giftId: gift.id,
-        context: "stream_random",
-        sessionId: sessionIdRef.current ?? undefined,
-      });
-      if (transaction) {
-        // Notify the stranger via data channel
-        if (
-          dataChannelRef.current &&
-          dataChannelRef.current.readyState === "open"
-        ) {
-          dataChannelRef.current.send(
-            JSON.stringify({
-              type: "gift",
-              gift: {
-                id: transaction.id,
-                sender_id: user.id,
-                gift_id: gift.id,
-                gift_name: gift.name,
-                gift_emoji: gift.emoji,
-                coin_cost: gift.coin_cost,
-                session_id: sessionIdRef.current,
-              },
-            }),
-          );
-        }
-        setShowGiftTray(false);
-        toast({
-          title: `${gift.emoji} ${gift.name} sent!`,
-          description: `${gift.coin_cost} coins`,
-        });
-      }
-    },
-    [user?.id, matchedUser?.id, sendGift, toast],
-  );
-
   /* ─── Timer for connected state ─── */
   useEffect(() => {
     if (state === "connected") {
@@ -1321,23 +1216,6 @@ const Stream = () => {
       return () => clearInterval(interval);
     }
   }, [state]);
-
-  /* ─── Initialize gift wallet & catalog ─── */
-  useEffect(() => {
-    if (user?.id) {
-      ensureWallet(user.id);
-      fetchGifts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
-
-  /* ─── Refresh wallet when call connects ─── */
-  useEffect(() => {
-    if (state === "connected" && user?.id) {
-      fetchWallet(user.id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, user?.id]);
 
   /* ─── Cleanup on unmount ─── */
   useEffect(() => {
@@ -2202,27 +2080,6 @@ const Stream = () => {
             </span>
           </div>
 
-          {/* Gift button — only when connected */}
-          {state === "connected" && (
-            <div className="flex flex-col items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowGiftTray(!showGiftTray)}
-                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl glass border-border/50 transition-all ${
-                  showGiftTray
-                    ? "border-yellow-400/60 text-yellow-400 bg-yellow-400/10"
-                    : "text-foreground hover:border-yellow-400/40 hover:text-yellow-400"
-                }`}
-              >
-                <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
-              </Button>
-              <span className="text-[10px] text-muted-foreground font-medium">
-                Gift
-              </span>
-            </div>
-          )}
-
           {/* Next / Skip button */}
           {state === "connected" && (
             <div className="flex flex-col items-center gap-1">
@@ -2302,48 +2159,6 @@ const Stream = () => {
         </DialogContent>
       </Dialog>
 
-      {/* ── Gift Tray (slide-up panel) ── */}
-      {state === "connected" && (
-        <GiftTray
-          isOpen={showGiftTray}
-          onClose={() => setShowGiftTray(false)}
-          gifts={gifts}
-          wallet={wallet}
-          onSend={handleSendGift}
-          isSending={isGiftSending}
-          isPremium={false}
-        />
-      )}
-
-      {/* ── Gift animation overlay (my own sent gift) ── */}
-      <GiftAnimationOverlay
-        activeGift={activeAnimation}
-        onComplete={clearAnimation}
-      />
-
-      {/* ── Incoming gift toasts (from stranger) ── */}
-      <GiftNotificationToast
-        gifts={incomingGiftQueue}
-        onRemove={removeIncomingGift}
-      />
-
-      {/* ── Post-call rating dialog ── */}
-      <PostCallRating
-        isOpen={showPostCallRating}
-        sessionId={postCallSessionIdRef.current || ""}
-        otherUser={postCallMatchedUserRef.current}
-        duration={postCallTimerRef.current}
-        onRate={async () => {
-          setShowPostCallRating(false);
-          postCallSessionIdRef.current = null;
-          postCallMatchedUserRef.current = null;
-        }}
-        onClose={() => {
-          setShowPostCallRating(false);
-          postCallSessionIdRef.current = null;
-          postCallMatchedUserRef.current = null;
-        }}
-      />
     </div>
   );
 
