@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useMotionValue, useTransform } from "framer-motion";
+import { useEffect, useRef, useCallback } from "react";
 import {
   Video,
   Shield,
