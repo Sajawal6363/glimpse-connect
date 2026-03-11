@@ -256,30 +256,8 @@ const Landing = () => {
         </div>
       </header>
 
-      {/* Hero with Floating Photo Background */}
-      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-20 max-w-5xl mx-auto min-h-[90vh]">
-        {/* Floating photos behind the hero content */}
-        <div
-          className="absolute inset-0 overflow-hidden pointer-events-none"
-          aria-hidden="true"
-        >
-          {floatingPhotos.map((photo, i) => (
-            <FloatingPhoto
-              key={photo.name}
-              photo={photo}
-              pos={photoPositions[i]}
-              index={i}
-            />
-          ))}
-          {/* Strong center vignette so hero text stays readable */}
-          <div
-            className="absolute inset-0 bg-radial-gradient pointer-events-none"
-            style={{
-              background:
-                "radial-gradient(ellipse 55% 60% at 50% 45%, hsl(var(--background) / 0.92) 0%, hsl(var(--background) / 0.6) 55%, transparent 100%)",
-            }}
-          />
-        </div>
+      {/* Hero with Royal Floating Photo Background */}
+      <HeroSection isAuthenticated={isAuthenticated} />
 
         <motion.div
           className="relative z-10"
