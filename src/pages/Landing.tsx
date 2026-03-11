@@ -194,6 +194,130 @@ const FloatingPhoto = ({
   );
 };
 
+/* ─── Hero Section with Royal Floating Cards ─── */
+const HeroSection = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+  const mouseX = useMotionValue(0.5);
+  const mouseY = useMotionValue(0.5);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      mouseX.set((e.clientX - rect.left) / rect.width);
+      mouseY.set((e.clientY - rect.top) / rect.height);
+    },
+    [mouseX, mouseY],
+  );
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.addEventListener("mousemove", handleMouseMove);
+    return () => el.removeEventListener("mousemove", handleMouseMove);
+  }, [handleMouseMove]);
+
+  return (
+    <section
+      ref={containerRef}
+      className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-20 max-w-5xl mx-auto min-h-[90vh]"
+    >
+      {/* Royal floating photos behind hero content */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        <ConnectionLines />
+        {floatingPhotos.map((photo, i) => (
+          <FloatingPhoto
+            key={photo.name}
+            photo={photo}
+            pos={photoPositions[i]}
+            index={i}
+            mouseX={mouseX}
+            mouseY={mouseY}
+          />
+        ))}
+        {/* Center vignette */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "radial-gradient(ellipse 55% 60% at 50% 45%, hsl(var(--background) / 0.92) 0%, hsl(var(--background) / 0.6) 55%, transparent 100%)",
+          }}
+        />
+      </div>
+
+      <motion.div
+        className="relative z-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+      >
+        <div className="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-8 text-sm text-muted-foreground">
+          <span className="w-2 h-2 bg-neon-green rounded-full animate-pulse" />
+          10,247 people streaming right now
+        </div>
+
+        <h1 className="text-5xl md:text-7xl font-display font-bold leading-tight mb-6">
+          <span className="bg-gradient-to-r from-primary via-secondary to-neon-green bg-clip-text text-transparent animate-gradient">
+            Meet Anyone.
+          </span>
+          <br />
+          <span className="text-foreground">Anywhere. Instantly.</span>
+        </h1>
+
+        <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+          The next-generation stranger video platform with AI safety, smart
+          matching, and a social experience unlike anything you've seen before.
+        </p>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Button
+            size="lg"
+            className="bg-gradient-to-r from-primary to-secondary text-primary-foreground font-bold text-lg px-8 py-6 rounded-2xl neon-glow-blue hover:scale-105 transition-transform"
+            asChild
+          >
+            <Link to={isAuthenticated ? "/stream" : "/register"}>
+              Start Streaming <ArrowRight className="ml-2 w-5 h-5" />
+            </Link>
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            className="border-border/50 text-muted-foreground hover:text-foreground px-8 py-6 rounded-2xl glass"
+            asChild
+          >
+            <Link to="/explore">Explore Users</Link>
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Stats */}
+      <motion.div
+        className="relative z-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.3 }}
+      >
+        <div className="flex flex-wrap justify-center gap-8 mt-20">
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="glass rounded-2xl px-8 py-5 text-center min-w-[160px]"
+            >
+              <stat.icon className="w-5 h-5 text-primary mx-auto mb-2" />
+              <div className="text-3xl font-bold text-foreground neon-text-blue">
+                {stat.value}
+              </div>
+              <div className="text-sm text-muted-foreground mt-1">
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </section>
+  );
+};
+
 const Landing = () => {
   const { user, isAuthenticated, isLoading } = useAuthStore();
 
