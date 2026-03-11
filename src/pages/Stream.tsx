@@ -53,7 +53,27 @@ import AppLayout from "@/components/layout/AppLayout";
 import { supabase, type Profile } from "@/lib/supabase";
 import { useSocialStore } from "@/stores/useSocialStore";
 
-/* ─── Types ─── */
+/* ─── Typewriter Search Text ─── */
+const searchText = "Searching for a stranger…";
+const SearchingText = () => {
+  const [displayedText, setDisplayedText] = useState("");
+  useEffect(() => {
+    let i = 0;
+    setDisplayedText("");
+    const interval = setInterval(() => {
+      i++;
+      if (i <= searchText.length) {
+        setDisplayedText(searchText.slice(0, i));
+      } else if (i > searchText.length + 15) {
+        i = 0;
+        setDisplayedText("");
+      }
+    }, 80);
+    return () => clearInterval(interval);
+  }, []);
+  return <span>{displayedText}<span className="animate-pulse">|</span></span>;
+};
+
 type StreamState = "idle" | "searching" | "connecting" | "connected";
 
 /* ─── Constants ─── */
