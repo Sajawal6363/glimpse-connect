@@ -78,7 +78,12 @@ const SearchingText = () => {
     }, 80);
     return () => clearInterval(interval);
   }, []);
-  return <span>{displayedText}<span className="animate-pulse">|</span></span>;
+  return (
+    <span>
+      {displayedText}
+      <span className="animate-pulse">|</span>
+    </span>
+  );
 };
 
 type StreamState = "idle" | "searching" | "connecting" | "connected";
@@ -1275,7 +1280,7 @@ const Stream = () => {
         senderId: user.id,
         receiverId: matchedUser.id,
         giftId: gift.id,
-        context: "stream",
+        context: "stream_random",
         sessionId: sessionIdRef.current ?? undefined,
       });
       if (transaction) {
@@ -1323,7 +1328,7 @@ const Stream = () => {
       ensureWallet(user.id);
       fetchGifts();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   /* ─── Refresh wallet when call connects ─── */
@@ -1331,7 +1336,7 @@ const Stream = () => {
     if (state === "connected" && user?.id) {
       fetchWallet(user.id);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, user?.id]);
 
   /* ─── Cleanup on unmount ─── */
@@ -1653,7 +1658,10 @@ const Stream = () => {
 
               {/* Royal orbital search animation */}
               <div className="flex-1 flex flex-col items-center justify-center bg-background/50 px-4">
-                <div className="relative w-48 h-48 sm:w-56 sm:h-56 mb-6" style={{ perspective: "600px" }}>
+                <div
+                  className="relative w-48 h-48 sm:w-56 sm:h-56 mb-6"
+                  style={{ perspective: "600px" }}
+                >
                   {/* Orbital rings */}
                   {[0, 1, 2].map((i) => (
                     <motion.div
@@ -1707,8 +1715,10 @@ const Stream = () => {
                     <motion.div
                       className="w-20 h-20 rounded-full flex items-center justify-center"
                       style={{
-                        background: "radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, hsl(var(--secondary) / 0.2) 60%, transparent 100%)",
-                        boxShadow: "0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--secondary) / 0.15)",
+                        background:
+                          "radial-gradient(circle, hsl(var(--primary) / 0.4) 0%, hsl(var(--secondary) / 0.2) 60%, transparent 100%)",
+                        boxShadow:
+                          "0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--secondary) / 0.15)",
                       }}
                       animate={{
                         scale: [1, 1.15, 1],
@@ -1718,12 +1728,20 @@ const Stream = () => {
                           "0 0 30px hsl(var(--primary) / 0.3), 0 0 60px hsl(var(--secondary) / 0.15)",
                         ],
                       }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
                     >
                       <motion.div
                         className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center"
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                        transition={{
+                          duration: 8,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
                       >
                         <Search className="w-6 h-6 text-primary-foreground" />
                       </motion.div>
@@ -1732,7 +1750,7 @@ const Stream = () => {
 
                   {/* Floating silhouettes */}
                   {[0, 1, 2, 3].map((i) => {
-                    const angle = (i * 90) * (Math.PI / 180);
+                    const angle = i * 90 * (Math.PI / 180);
                     const radius = 75;
                     return (
                       <motion.div
@@ -1764,12 +1782,18 @@ const Stream = () => {
                   <motion.div
                     className="absolute -inset-3 rounded-full opacity-30"
                     style={{
-                      background: "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary)))",
+                      background:
+                        "conic-gradient(from 0deg, hsl(var(--primary)), hsl(var(--secondary)), hsl(var(--accent)), hsl(var(--primary)))",
                       mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px))",
-                      WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px))",
+                      WebkitMask:
+                        "radial-gradient(farthest-side, transparent calc(100% - 2px), black calc(100% - 2px))",
                     }}
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 6,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                   />
                 </div>
 
@@ -1777,7 +1801,8 @@ const Stream = () => {
                 <motion.h2
                   className="text-lg sm:text-xl font-bold text-foreground mb-2 text-center"
                   style={{
-                    textShadow: "0 0 12px hsl(var(--primary) / 0.4), 0 0 24px hsl(var(--primary) / 0.2)",
+                    textShadow:
+                      "0 0 12px hsl(var(--primary) / 0.4), 0 0 24px hsl(var(--primary) / 0.2)",
                   }}
                 >
                   <SearchingText />
