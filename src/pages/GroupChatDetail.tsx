@@ -18,6 +18,7 @@ import {
   Pencil,
   Camera,
   Loader2,
+  PhoneCall,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,11 @@ const GroupChatDetail = () => {
   const [mutualFollows, setMutualFollows] = useState<Profile[]>([]);
   const [selectedInvites, setSelectedInvites] = useState<string[]>([]);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(
+    null,
+  );
+  const [isSendingImage, setIsSendingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,6 +92,64 @@ const GroupChatDetail = () => {
 
   const isAdmin =
     members.find((m) => m.user_id === currentUser?.id)?.role === "admin";
+
+  // Active group call detection — listen for ring/accept/end signals
+  const [activeCallHost, setActiveCallHost] = useState<string | null>(null);
+  const [activeCallHostName, setActiveCallHostName] = useState<string>("");
+
+  useEffect(() => {
+    if (!groupId || !currentUser?.id) return;
+
+    const channelName = `group-call-${groupId}`;
+    const channel = supabase.channel(channelName, {
+      config: { broadcast: { self: false } },
+    });
+
+    channel
+      .on("broadcast", { event: "group-call-signal" }, (payload) => {
+        const data = payload.payload as {
+          action: string;
+          fromUserId: string;
+          hostUserId?: string;
+        };
+        if (data.fromUserId === currentUser.id) return;
+
+        switch (data.action) {
+          case "ring":
+          case "accept":
+            setActiveCallHost(data.hostUserId || data.fromUserId);
+            // Find host name from members
+            {
+              const hostMember = members.find(
+                (m) => m.user_id === (data.hostUserId || data.fromUserId),
+              );
+              setActiveCallHostName(
+                hostMember?.profile?.name ||
+                  hostMember?.profile?.username ||
+                  "Someone",
+              );
+            }
+            break;
+          case "end-all":
+            setActiveCallHost(null);
+            setActiveCallHostName("");
+            break;
+          case "end":
+            // A member left — only clear if it was the host
+            if (data.fromUserId === activeCallHost) {
+              setActiveCallHost(null);
+              setActiveCallHostName("");
+            }
+            break;
+        }
+      })
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId, currentUser?.id, members]);
 
   // Fetch group data
   useEffect(() => {
@@ -131,6 +195,14 @@ const GroupChatDetail = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingImagePreview) {
+        URL.revokeObjectURL(pendingImagePreview);
+      }
+    };
+  }, [pendingImagePreview]);
 
   // Fetch mutual follows when invite dialog opens
   useEffect(() => {
@@ -182,18 +254,64 @@ const GroupChatDetail = () => {
     }
   };
 
-  const handleImageSend = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const clearPendingImage = () => {
+    if (pendingImagePreview) {
+      URL.revokeObjectURL(pendingImagePreview);
+    }
+    setPendingImageFile(null);
+    setPendingImagePreview(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser || !groupId) return;
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Please select an image file",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 1 * 1024 * 1024) {
+      toast({
+        title: "Image must be less than 1MB",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setPendingImageFile(file);
+    setPendingImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleConfirmImageSend = async () => {
+    if (!pendingImageFile || !currentUser || !groupId) return;
+
+    setIsSendingImage(true);
     try {
-      await sendGroupImage(groupId, currentUser.id, file);
+      await sendGroupImage(groupId, currentUser.id, pendingImageFile);
+      clearPendingImage();
     } catch (err) {
       toast({
         title: err instanceof Error ? err.message : "Failed to send image",
         variant: "destructive",
       });
     }
-    e.target.value = "";
+    setIsSendingImage(false);
+  };
+
+  const handleComposerSend = async () => {
+    if (pendingImageFile) {
+      await handleConfirmImageSend();
+      return;
+    }
+    await handleSend();
   };
 
   const handleLeave = async () => {
@@ -449,6 +567,41 @@ const GroupChatDetail = () => {
           </div>
         </div>
 
+        {/* Active Call Banner */}
+        {activeCallHost && (
+          <div
+            className="flex items-center gap-3 px-4 py-3 bg-green-500/10 border-b border-green-500/20 cursor-pointer hover:bg-green-500/15 transition-colors"
+            onClick={() =>
+              navigate(
+                `/stream/group/${groupId}?mode=answer&caller=${activeCallHost}`,
+              )
+            }
+          >
+            <div className="w-9 h-9 rounded-full bg-green-500/20 flex items-center justify-center shrink-0">
+              <PhoneCall className="w-4.5 h-4.5 text-green-400 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-green-400">
+                Group call in progress
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                {activeCallHostName} started a call · Tap to join
+              </p>
+            </div>
+            <button
+              className="shrink-0 px-4 py-1.5 rounded-full bg-green-500 text-white text-xs font-semibold hover:bg-green-600 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(
+                  `/stream/group/${groupId}?mode=answer&caller=${activeCallHost}`,
+                );
+              }}
+            >
+              Join
+            </button>
+          </div>
+        )}
+
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           {isLoading ? (
@@ -542,11 +695,13 @@ const GroupChatDetail = () => {
                           </Link>
                         )}
                         {msg.media_url && msg.type === "image" && (
-                          <PrivateImage
-                            src={msg.media_url}
-                            alt="Shared"
-                            className="rounded-xl max-w-full mb-2"
-                          />
+                          <div className="mb-2 rounded-xl overflow-hidden border border-border/30 bg-black/10 max-w-[220px] sm:max-w-[260px]">
+                            <PrivateImage
+                              src={msg.media_url}
+                              alt="Shared"
+                              className="w-full max-h-64 object-cover"
+                            />
+                          </div>
                         )}
                         {msg.content && msg.type !== "image" && (
                           <p className="leading-relaxed">{msg.content}</p>
@@ -572,38 +727,78 @@ const GroupChatDetail = () => {
 
         {/* Input */}
         <div className="p-4 glass border-t border-border/30">
+          {pendingImagePreview && (
+            <div className="mb-3 rounded-2xl border border-border/40 bg-muted/20 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Image preview
+                </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-7 h-7 text-muted-foreground"
+                  onClick={clearPendingImage}
+                  disabled={isSendingImage}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="rounded-xl overflow-hidden bg-black/20 mb-2 w-28 h-28 sm:w-32 sm:h-32">
+                <img
+                  src={pendingImagePreview}
+                  alt="Selected preview"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground truncate">
+                {pendingImageFile?.name}
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center gap-2">
             <input
               type="file"
               ref={imageInputRef}
               accept="image/*"
               className="hidden"
-              onChange={handleImageSend}
+              onChange={handleImageSelect}
             />
             <Button
               variant="ghost"
               size="icon"
               className="text-muted-foreground shrink-0"
               onClick={() => imageInputRef.current?.click()}
+              disabled={isSendingImage}
             >
               <Image className="w-5 h-5" />
             </Button>
             <Input
-              placeholder="Type a message..."
+              placeholder={
+                pendingImageFile
+                  ? "Image selected — tap send"
+                  : "Type a message..."
+              }
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={(e) =>
-                e.key === "Enter" && !e.shiftKey && handleSend()
+                e.key === "Enter" && !e.shiftKey && handleComposerSend()
               }
               className="flex-1 h-12 bg-muted/30 border-border/30 rounded-xl"
             />
             <Button
               size="icon"
-              onClick={handleSend}
-              disabled={!message.trim()}
+              onClick={handleComposerSend}
+              disabled={
+                (!message.trim() && !pendingImageFile) || isSendingImage
+              }
               className="bg-primary text-primary-foreground rounded-xl shrink-0 neon-glow-blue disabled:opacity-50"
             >
-              <Send className="w-5 h-5" />
+              {isSendingImage ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
             </Button>
           </div>
         </div>

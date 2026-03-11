@@ -63,7 +63,6 @@ const Register = () => {
   const navigate = useNavigate();
   const {
     register: registerUser,
-    uploadAvatar,
     needsEmailConfirmation,
     pendingEmail,
     clearEmailConfirmation,
@@ -102,6 +101,14 @@ const Register = () => {
     };
     checkUsername();
   }, [debouncedUsername]);
+
+  useEffect(() => {
+    if (!needsEmailConfirmation) return;
+    const email = pendingEmail
+      ? `?email=${encodeURIComponent(pendingEmail)}`
+      : "";
+    navigate(`/confirm-email${email}`);
+  }, [needsEmailConfirmation, pendingEmail, navigate]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,6 +172,7 @@ const Register = () => {
       );
 
       // Register the user first (creates auth user + profile + session)
+      // Pass avatarFile so it's uploaded with an active session
       await registerUser({
         email: step1Data.email,
         password: step1Data.password,
@@ -176,21 +184,17 @@ const Register = () => {
         countryCode: step2Data.country,
         bio: step2Data.bio,
         interests: selectedInterests,
+        avatarFile: avatarFile,
       });
 
-      // Upload avatar AFTER registration so the session exists
-      if (avatarFile) {
-        try {
-          await uploadAvatar(avatarFile);
-        } catch (avatarErr) {
-          console.warn("Avatar upload failed, continuing:", avatarErr);
-        }
-      }
+      // Avatar is now uploaded inside registerUser, no need for separate upload
 
       // Check if email confirmation is required
       const currentState = useAuthStore.getState();
       if (currentState.needsEmailConfirmation) {
-        // Don't navigate — the confirmation screen will render
+        const email = currentState.pendingEmail || step1Data.email;
+        navigate(`/confirm-email?email=${encodeURIComponent(email)}`);
+        setIsSubmitting(false);
         return;
       }
 
@@ -200,6 +204,14 @@ const Register = () => {
       });
       navigate("/stream");
     } catch (err: unknown) {
+      // If email confirmation was triggered inside register(), don't show error toast
+      const currentState = useAuthStore.getState();
+      if (currentState.needsEmailConfirmation) {
+        const email = currentState.pendingEmail || step1Form.getValues("email");
+        navigate(`/confirm-email?email=${encodeURIComponent(email)}`);
+        setIsSubmitting(false);
+        return;
+      }
       const message =
         err instanceof Error ? err.message : "Registration failed";
       toast({ title: "Error", description: message, variant: "destructive" });
@@ -213,43 +225,94 @@ const Register = () => {
       <ParticleBackground />
       <div className="gradient-mesh fixed inset-0 z-0 pointer-events-none" />
 
-      {/* Email Confirmation Screen */}
+      {/* Email Confirmation Screen — Professional */}
       {needsEmailConfirmation && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md relative z-10"
+          className="w-full max-w-lg relative z-10"
         >
-          <div className="glass rounded-3xl p-8 text-center">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-6">
-              <Mail className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
-              Confirm Your Email
+          <div className="glass rounded-3xl p-10 text-center relative overflow-hidden">
+            {/* Decorative gradient top bar */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-secondary to-neon-green" />
+
+            {/* Animated email icon */}
+            <motion.div
+              initial={{ y: -10 }}
+              animate={{ y: [0, -8, 0] }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-8 ring-4 ring-primary/10"
+            >
+              <Mail className="w-12 h-12 text-primary" />
+            </motion.div>
+
+            <h2 className="text-3xl font-bold text-foreground mb-2 font-display">
+              Check Your Inbox
             </h2>
-            <p className="text-muted-foreground mb-6">
-              We've sent a confirmation link to{" "}
-              <span className="text-foreground font-semibold">
+            <p className="text-muted-foreground mb-8 leading-relaxed max-w-sm mx-auto">
+              We've sent a verification link to
+            </p>
+            <div className="glass rounded-xl px-5 py-3 inline-flex items-center gap-2 mb-8">
+              <Mail className="w-4 h-4 text-primary" />
+              <span className="text-foreground font-semibold text-sm">
                 {pendingEmail}
               </span>
-              . Please check your inbox and click the link to activate your
-              account.
-            </p>
-            <div className="glass rounded-xl p-4 mb-6 text-left">
-              <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">Didn't get it?</strong>{" "}
-                Check your spam folder or try registering again with a different
-                email.
+            </div>
+
+            {/* Steps */}
+            <div className="glass rounded-2xl p-5 mb-8 text-left space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">1</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Open the email from{" "}
+                  <strong className="text-foreground">ConnectLive</strong>
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">2</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Click the{" "}
+                  <strong className="text-foreground">confirmation link</strong>{" "}
+                  in the email
+                </p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-primary text-xs font-bold">3</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Come back here and{" "}
+                  <strong className="text-foreground">log in</strong> to start
+                  streaming
+                </p>
+              </div>
+            </div>
+
+            <div className="glass rounded-xl p-4 mb-8 text-sm text-muted-foreground">
+              <p>
+                <strong className="text-foreground">Didn't receive it?</strong>{" "}
+                Check your spam or junk folder. The email may take a few minutes
+                to arrive.
               </p>
             </div>
+
             <div className="flex gap-3 justify-center">
               <Button
                 variant="outline"
                 onClick={() => {
                   clearEmailConfirmation();
                 }}
-                className="rounded-xl"
+                className="rounded-xl glass border-border/50 px-6"
               >
+                <ChevronLeft className="w-4 h-4 mr-1" />
                 Back to Register
               </Button>
               <Button
@@ -257,9 +320,10 @@ const Register = () => {
                   clearEmailConfirmation();
                   navigate("/login");
                 }}
-                className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-xl"
+                className="bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-xl px-6 font-semibold neon-glow-blue"
               >
                 Go to Login
+                <ChevronRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
           </div>

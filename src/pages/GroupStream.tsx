@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,17 +34,66 @@ interface PeerEntry {
   profile?: Profile;
 }
 
+interface CallParticipant {
+  userId: string;
+  profile?: Profile;
+  stream?: MediaStream | null;
+  isLocal: boolean;
+}
+
 const RING_TIMEOUT = 60_000; // 1 minute
-const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-  { urls: "stun:stun1.l.google.com:19302" },
-];
+const MAX_CALL_DURATION = 60 * 60; // 1 hour in seconds
+const ACTIVE_CALL_DB_KEY = "active_group_calls";
+
+const STUN_URL =
+  import.meta.env.VITE_STUN_URL || "stun:stun.l.google.com:19302";
+const TURN_URL = import.meta.env.VITE_TURN_URL || "";
+const TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME || "";
+const TURN_PASSWORD = import.meta.env.VITE_TURN_PASSWORD || "";
+
+const getIceServers = (): RTCIceServer[] => {
+  const servers: RTCIceServer[] = [
+    { urls: STUN_URL },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    // Free relay TURN servers — essential for calls across different networks
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+  ];
+
+  if (TURN_URL) {
+    servers.push({
+      urls: TURN_URL,
+      username: TURN_USERNAME,
+      credential: TURN_PASSWORD,
+    });
+  }
+
+  return servers;
+};
+const ACTIVE_GROUP_CALL_KEY = "active_group_call_session";
 
 const GroupStream = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isAnswerMode = searchParams.get("mode") === "answer";
+  const callerFromQuery = searchParams.get("caller");
   const { user: currentUser } = useAuthStore();
   const { currentGroup, members, fetchGroup, fetchMembers } =
     useGroupChatStore();
@@ -57,9 +106,26 @@ const GroupStream = () => {
   const [connectedPeers, setConnectedPeers] = useState<
     { userId: string; profile?: Profile; stream: MediaStream }[]
   >([]);
+  const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
+    [],
+  );
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+
+  // Callback ref: auto-attach local stream when a new <video> element mounts
+  // (AnimatePresence destroys/recreates DOM across status changes)
+  const localVideoCallbackRef = useCallback((node: HTMLVideoElement | null) => {
+    localVideoRef.current = node;
+    if (node && localStreamRef.current) {
+      console.log(
+        "[GroupStream] localVideoCallbackRef — attaching local stream to new DOM node",
+      );
+      node.srcObject = localStreamRef.current;
+      node.muted = true;
+      node.play().catch(() => {});
+    }
+  }, []);
   const peersRef = useRef<Map<string, PeerEntry>>(new Map());
   const callChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(
     null,
@@ -70,6 +136,12 @@ const GroupStream = () => {
   );
   const statusRef = useRef<CallStatus>("idle");
   const callDurationRef = useRef(0);
+  const hostUserIdRef = useRef<string | null>(null);
+  const lastOfferAttemptRef = useRef<Map<string, number>>(new Map());
+  const maxDurationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const activeCallRowIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     statusRef.current = status;
@@ -78,6 +150,24 @@ const GroupStream = () => {
   useEffect(() => {
     callDurationRef.current = callDuration;
   }, [callDuration]);
+
+  const clearCallSession = () => {
+    localStorage.removeItem(ACTIVE_GROUP_CALL_KEY);
+  };
+
+  useEffect(() => {
+    // Always clear session on terminal states
+    if (status === "ended" || status === "missed") {
+      clearCallSession();
+    }
+  }, [status]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    setActiveParticipantIds((prev) =>
+      prev.includes(currentUser.id) ? prev : [currentUser.id, ...prev],
+    );
+  }, [currentUser?.id]);
 
   // Load group data
   useEffect(() => {
@@ -110,6 +200,7 @@ const GroupStream = () => {
         const data = payload.payload as {
           action: string;
           fromUserId: string;
+          hostUserId?: string;
           toUserId?: string;
           sdp?: RTCSessionDescriptionInit;
           candidate?: RTCIceCandidateInit;
@@ -118,7 +209,12 @@ const GroupStream = () => {
 
         switch (data.action) {
           case "accept":
-            // A member accepted – create peer connection to them
+            markParticipantActive(data.fromUserId);
+            if (data.hostUserId) {
+              hostUserIdRef.current = data.hostUserId;
+            }
+            // A member accepted — every existing participant creates an offer to this member.
+            // This ensures full mesh visibility (3-5+ participants all see each other).
             if (
               statusRef.current === "calling" ||
               statusRef.current === "connected" ||
@@ -126,8 +222,27 @@ const GroupStream = () => {
             ) {
               clearRingTimeout();
               setStatus("connected");
-              setupPeerForUser(data.fromUserId, true);
+              if (
+                shouldInitiateOffer(data.fromUserId) &&
+                canAttemptOfferNow(data.fromUserId)
+              ) {
+                setupPeerForUser(data.fromUserId, true);
+              }
+
+              setTimeout(() => {
+                const existing = peersRef.current.get(data.fromUserId);
+                if (
+                  (!existing || !existing.stream) &&
+                  shouldInitiateOffer(data.fromUserId) &&
+                  canAttemptOfferNow(data.fromUserId)
+                ) {
+                  setupPeerForUser(data.fromUserId, true);
+                }
+              }, 1200);
             }
+            break;
+          case "ring":
+            hostUserIdRef.current = data.hostUserId || data.fromUserId;
             break;
           case "decline":
             // Just a toast, don't end the whole call
@@ -144,19 +259,47 @@ const GroupStream = () => {
             // A member left the call
             removePeer(data.fromUserId);
             break;
+          case "end-all":
+            cleanupAll();
+            clearCallSession();
+            removeActiveCallFromDB();
+            setStatus("ended");
+            toast({
+              title: "Call ended",
+              description: "The group call host ended the call for everyone.",
+            });
+            break;
           case "offer":
             if (data.toUserId === currentUser.id && data.sdp) {
+              markParticipantActive(data.fromUserId);
               handleRemoteOffer(data.fromUserId, data.sdp);
             }
             break;
           case "answer":
             if (data.toUserId === currentUser.id && data.sdp) {
+              markParticipantActive(data.fromUserId);
               handleRemoteAnswer(data.fromUserId, data.sdp);
             }
             break;
           case "ice-candidate":
             if (data.toUserId === currentUser.id && data.candidate) {
               handleRemoteIceCandidate(data.fromUserId, data.candidate);
+            }
+            break;
+          case "presence-sync":
+            markParticipantActive(data.fromUserId);
+            if (
+              (statusRef.current === "connecting" ||
+                statusRef.current === "connected") &&
+              shouldInitiateOffer(data.fromUserId)
+            ) {
+              const existing = peersRef.current.get(data.fromUserId);
+              if (
+                (!existing || !existing.stream) &&
+                canAttemptOfferNow(data.fromUserId)
+              ) {
+                setupPeerForUser(data.fromUserId, true);
+              }
             }
             break;
         }
@@ -172,10 +315,88 @@ const GroupStream = () => {
 
   useEffect(() => {
     return () => {
+      // On unmount, always clean up fully — WebRTC can't survive navigation
+      const active =
+        statusRef.current === "calling" ||
+        statusRef.current === "connecting" ||
+        statusRef.current === "connected";
+      if (active) {
+        // Signal end to others BEFORE cleaning up channels
+        if (
+          hostUserIdRef.current &&
+          hostUserIdRef.current === currentUser?.id
+        ) {
+          sendSignal("end-all");
+          removeActiveCallFromDB();
+        } else {
+          sendSignal("end");
+        }
+      }
       cleanupAll();
+      clearCallSession();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-attach local video when status changes (backup for callback refs)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localStreamRef.current && localVideoRef.current) {
+        if (localVideoRef.current.srcObject !== localStreamRef.current) {
+          console.log(
+            "[GroupStream] Re-attaching local stream on status change:",
+            status,
+          );
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.muted = true;
+          localVideoRef.current.play().catch(() => {});
+        }
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  // Block refresh + back button during active call
+  useEffect(() => {
+    const active =
+      status === "calling" || status === "connecting" || status === "connected";
+    if (!active) return;
+
+    // Block page refresh
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    // Block browser back button by pushing a dummy history entry
+    // and intercepting the popstate event
+    window.history.pushState(null, "", window.location.href);
+    const handlePopState = () => {
+      // Re-push to prevent going back
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [status]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    if (!(status === "connecting" || status === "connected")) return;
+
+    const interval = setInterval(() => {
+      sendSignal("presence-sync", {
+        hostUserId: hostUserIdRef.current || currentUser.id,
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, currentUser?.id]);
 
   // ===== HELPERS =====
 
@@ -185,6 +406,19 @@ const GroupStream = () => {
       event: "group-call-signal",
       payload: { action, fromUserId: currentUser?.id, ...extra },
     });
+  };
+
+  const shouldInitiateOffer = (remoteUserId: string) => {
+    if (!currentUser?.id) return false;
+    return currentUser.id < remoteUserId;
+  };
+
+  const canAttemptOfferNow = (remoteUserId: string) => {
+    const now = Date.now();
+    const last = lastOfferAttemptRef.current.get(remoteUserId) || 0;
+    if (now - last < 1800) return false;
+    lastOfferAttemptRef.current.set(remoteUserId, now);
+    return true;
   };
 
   /** Ring each group member via their personal incoming-call channel */
@@ -234,6 +468,42 @@ const GroupStream = () => {
     }
   };
 
+  /** Store active call in Supabase so group members can see "Join Call" banner */
+  const insertActiveCallToDB = async () => {
+    if (!currentUser?.id || !groupId) return;
+    try {
+      // Remove any existing active call for this group first
+      await supabase.from(ACTIVE_CALL_DB_KEY).delete().eq("group_id", groupId);
+
+      const { data } = await supabase
+        .from(ACTIVE_CALL_DB_KEY)
+        .insert({
+          group_id: groupId,
+          host_user_id: currentUser.id,
+          started_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (data) {
+        activeCallRowIdRef.current = data.id;
+      }
+    } catch (e) {
+      // Table might not exist yet — that's fine, the banner won't show
+      console.warn("[GroupStream] Could not insert active call:", e);
+    }
+  };
+
+  /** Remove active call from DB when call ends */
+  const removeActiveCallFromDB = async () => {
+    if (!groupId) return;
+    try {
+      await supabase.from(ACTIVE_CALL_DB_KEY).delete().eq("group_id", groupId);
+    } catch {
+      // ignore
+    }
+    activeCallRowIdRef.current = null;
+  };
+
   const cleanupAll = () => {
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
@@ -241,10 +511,15 @@ const GroupStream = () => {
     peersRef.current.forEach((entry) => entry.pc.close());
     peersRef.current.clear();
     setConnectedPeers([]);
+    setActiveParticipantIds(currentUser?.id ? [currentUser.id] : []);
     clearRingTimeout();
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
       durationIntervalRef.current = null;
+    }
+    if (maxDurationTimeoutRef.current) {
+      clearTimeout(maxDurationTimeoutRef.current);
+      maxDurationTimeoutRef.current = null;
     }
   };
 
@@ -254,10 +529,33 @@ const GroupStream = () => {
       entry.pc.close();
       peersRef.current.delete(userId);
       setConnectedPeers((prev) => prev.filter((p) => p.userId !== userId));
+      setActiveParticipantIds((prev) => prev.filter((id) => id !== userId));
     }
   };
 
+  const markParticipantActive = (userId: string) => {
+    setActiveParticipantIds((prev) =>
+      prev.includes(userId) ? prev : [...prev, userId],
+    );
+  };
+
+  const hasLiveLocalStream = () => {
+    const stream = localStreamRef.current;
+    return (
+      !!stream &&
+      stream.getTracks().some((track) => track.readyState === "live")
+    );
+  };
+
   const startLocalStream = async () => {
+    if (hasLiveLocalStream()) {
+      const existing = localStreamRef.current;
+      if (existing && localVideoRef.current) {
+        localVideoRef.current.srcObject = existing;
+      }
+      return existing;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
@@ -282,40 +580,61 @@ const GroupStream = () => {
     remoteUserId: string,
     stream: MediaStream,
   ): RTCPeerConnection => {
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const iceServers = getIceServers();
+    console.log(
+      "[GroupStream] createPeerConnection for",
+      remoteUserId.slice(0, 8),
+      "iceServers:",
+      iceServers.length,
+    );
+    const pc = new RTCPeerConnection({ iceServers });
 
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    stream.getTracks().forEach((track) => {
+      console.log(
+        "[GroupStream] Adding track:",
+        track.kind,
+        "for peer",
+        remoteUserId.slice(0, 8),
+      );
+      pc.addTrack(track, stream);
+    });
 
     pc.ontrack = (event) => {
-      if (event.streams[0]) {
-        const profile = members.find(
-          (m) => m.user_id === remoteUserId,
-        )?.profile;
-        peersRef.current.set(remoteUserId, {
-          ...(peersRef.current.get(remoteUserId) || {
-            pc,
-            userId: remoteUserId,
-            profile,
-          }),
-          stream: event.streams[0],
+      console.log(
+        "[GroupStream] ✅ ontrack from",
+        remoteUserId.slice(0, 8),
+        "track:",
+        event.track.kind,
+        "streams:",
+        event.streams.length,
+      );
+      const remoteStream = event.streams?.[0] || new MediaStream([event.track]);
+      markParticipantActive(remoteUserId);
+      const profile = members.find((m) => m.user_id === remoteUserId)?.profile;
+      peersRef.current.set(remoteUserId, {
+        ...(peersRef.current.get(remoteUserId) || {
           pc,
-        } as PeerEntry);
+          userId: remoteUserId,
+          profile,
+        }),
+        stream: remoteStream,
+        pc,
+      } as PeerEntry);
 
-        setConnectedPeers((prev) => {
-          const filtered = prev.filter((p) => p.userId !== remoteUserId);
-          return [
-            ...filtered,
-            { userId: remoteUserId, profile, stream: event.streams[0] },
-          ];
-        });
+      setConnectedPeers((prev) => {
+        const filtered = prev.filter((p) => p.userId !== remoteUserId);
+        return [
+          ...filtered,
+          { userId: remoteUserId, profile, stream: remoteStream },
+        ];
+      });
 
-        // Start duration timer on first peer connection
-        if (!durationIntervalRef.current) {
-          setCallDuration(0);
-          durationIntervalRef.current = setInterval(() => {
-            setCallDuration((prev) => prev + 1);
-          }, 1000);
-        }
+      // Start duration timer on first peer connection
+      if (!durationIntervalRef.current) {
+        setCallDuration(0);
+        durationIntervalRef.current = setInterval(() => {
+          setCallDuration((prev) => prev + 1);
+        }, 1000);
       }
     };
 
@@ -323,17 +642,38 @@ const GroupStream = () => {
       if (event.candidate) {
         sendSignal("ice-candidate", {
           toUserId: remoteUserId,
-          candidate: event.candidate,
+          candidate: event.candidate.toJSON(),
         });
       }
     };
 
+    pc.oniceconnectionstatechange = () => {
+      console.log(
+        "[GroupStream] ICE connection state for",
+        remoteUserId.slice(0, 8),
+        ":",
+        pc.iceConnectionState,
+      );
+    };
+
     pc.onconnectionstatechange = () => {
+      console.log(
+        "[GroupStream] Connection state for",
+        remoteUserId.slice(0, 8),
+        ":",
+        pc.connectionState,
+      );
       if (
         pc.connectionState === "disconnected" ||
         pc.connectionState === "failed"
       ) {
         removePeer(remoteUserId);
+      }
+      if (pc.connectionState === "connected") {
+        console.log(
+          "[GroupStream] ✅ Peer connected:",
+          remoteUserId.slice(0, 8),
+        );
       }
     };
 
@@ -426,14 +766,58 @@ const GroupStream = () => {
 
   // ===== CALL ACTIONS =====
 
+  /** Start 5-minute max call duration timer */
+  const startMaxDurationTimer = () => {
+    if (maxDurationTimeoutRef.current) return;
+    maxDurationTimeoutRef.current = setTimeout(async () => {
+      if (
+        statusRef.current === "connected" ||
+        statusRef.current === "connecting" ||
+        statusRef.current === "calling"
+      ) {
+        toast({
+          title: "Call time limit reached",
+          description: "Group calls are limited to 1 hour.",
+        });
+        // If host, end for everyone
+        if (currentUser?.id && hostUserIdRef.current === currentUser.id) {
+          sendSignal("end-all");
+        } else {
+          sendSignal("end");
+        }
+        cleanupAll();
+        clearCallSession();
+        removeActiveCallFromDB();
+        const dur = callDurationRef.current;
+        if (dur > 0) {
+          const senderName =
+            currentUser?.name || currentUser?.username || "Someone";
+          await insertGroupCallMessage(
+            `📹 Group call · ${formatDuration(dur)} · ${senderName} (time limit)`,
+          );
+        }
+        setStatus("ended");
+      }
+    }, MAX_CALL_DURATION * 1000);
+  };
+
   const startCall = async () => {
     if (!currentUser || !groupId) return;
 
+    // Request camera/mic access FIRST before ringing
     const stream = await startLocalStream();
     if (!stream) return;
 
+    hostUserIdRef.current = currentUser.id;
+    setActiveParticipantIds([currentUser.id]);
     setStatus("calling");
-    sendSignal("ring");
+    sendSignal("ring", { hostUserId: currentUser.id });
+
+    // Insert active call to DB for "Join Call" banner
+    insertActiveCallToDB();
+
+    // Start 5-minute max duration timer
+    startMaxDurationTimer();
 
     // Ring each member via their personal broadcast channel (no notifications!)
     ringGroupMembers("ring");
@@ -446,6 +830,7 @@ const GroupStream = () => {
         setStatus("missed");
 
         await insertGroupCallMessage("📞 Missed group call");
+        removeActiveCallFromDB();
 
         toast({
           title: "No answer",
@@ -453,6 +838,7 @@ const GroupStream = () => {
         });
         setTimeout(() => {
           cleanupAll();
+          clearCallSession();
           setStatus("idle");
         }, 3000);
       }
@@ -463,13 +849,23 @@ const GroupStream = () => {
   const autoAccept = async () => {
     setStatus("connecting");
 
+    if (currentUser?.id) {
+      setActiveParticipantIds([currentUser.id]);
+    }
+
+    if (callerFromQuery) {
+      hostUserIdRef.current = callerFromQuery;
+    }
+
     const stream = await startLocalStream();
     if (!stream) {
       setStatus("idle");
       return;
     }
 
-    sendSignal("accept");
+    sendSignal("accept", { hostUserId: hostUserIdRef.current || undefined });
+    // Start 5-minute max duration timer
+    startMaxDurationTimer();
     // Status stays "connecting" until ontrack fires from peer connections
 
     // Timeout: if no peers connect within 30s, go back to idle
@@ -495,13 +891,21 @@ const GroupStream = () => {
     sendSignal("end");
     await insertGroupCallMessage("📞 Cancelled group call");
     cleanupAll();
+    clearCallSession();
+    removeActiveCallFromDB();
     setStatus("ended");
   };
 
   const endCallWithSignal = async () => {
     const dur = callDurationRef.current;
-    sendSignal("end");
+    if (currentUser?.id && hostUserIdRef.current === currentUser.id) {
+      sendSignal("end-all");
+      removeActiveCallFromDB();
+    } else {
+      sendSignal("end");
+    }
     cleanupAll();
+    clearCallSession();
 
     if (dur > 0) {
       const senderName =
@@ -542,268 +946,371 @@ const GroupStream = () => {
       return;
     }
     if (status === "connected" || status === "connecting") {
+      // End the call when navigating away — we can't preserve group call media across pages
       endCallWithSignal();
+      navigate(`/groups/${groupId}`);
       return;
     }
     cleanupAll();
+    clearCallSession();
     navigate(`/groups/${groupId}`);
   };
 
-  // ===== VIDEO GRID LAYOUT =====
+  // Clear any stale session on mount
+  useEffect(() => {
+    clearCallSession();
+  }, []);
+
+  const participants: CallParticipant[] = [
+    ...(currentUser
+      ? [
+          {
+            userId: currentUser.id,
+            profile: currentUser,
+            stream: localStreamRef.current,
+            isLocal: true,
+          },
+        ]
+      : []),
+    ...activeParticipantIds
+      .filter((id) => id !== currentUser?.id)
+      .map((participantId) => {
+        const connectedPeer = connectedPeers.find(
+          (p) => p.userId === participantId,
+        );
+        const memberProfile = members.find(
+          (member) => member.user_id === participantId,
+        )?.profile;
+        return {
+          userId: participantId,
+          profile: connectedPeer?.profile || memberProfile,
+          stream: connectedPeer?.stream || null,
+          isLocal: false,
+        };
+      }),
+  ];
+
+  const participantCount = participants.length;
+
   const getGridClass = (count: number) => {
-    if (count <= 1) return "grid-cols-1";
-    if (count <= 2) return "grid-cols-2";
-    if (count <= 4) return "grid-cols-2 grid-rows-2";
-    return "grid-cols-3 grid-rows-2";
+    if (count <= 1) return "grid-cols-1 max-w-4xl";
+    if (count === 2) return "grid-cols-1 md:grid-cols-2 max-w-6xl";
+    if (count === 3)
+      return "grid-cols-1 md:grid-cols-6 md:grid-rows-2 max-w-6xl";
+    if (count === 4)
+      return "grid-cols-1 md:grid-cols-2 md:grid-rows-2 max-w-6xl";
+    return "grid-cols-1 md:grid-cols-6 md:grid-rows-2 max-w-7xl";
   };
 
-  return (
-    <AppLayout>
-      <div className="flex flex-col h-[calc(100vh-3.5rem)] max-w-5xl mx-auto relative bg-background">
-        <AnimatePresence mode="wait">
-          {/* ====== IDLE STATE ====== */}
-          {status === "idle" && (
-            <motion.div
-              key="idle"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col items-center justify-center gap-8 p-6"
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={goBack}
-                className="absolute top-4 left-4"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
+  const getTileClass = (count: number, index: number) => {
+    if (count === 3) {
+      if (index === 0) return "md:col-span-6";
+      return "md:col-span-3";
+    }
+    if (count >= 5) {
+      if (index < 3) return "md:col-span-2";
+      return "md:col-span-3";
+    }
+    return "";
+  };
 
-              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center overflow-hidden ring-4 ring-secondary/20">
+  // During active call states, render full-screen (no sidebar/navbar)
+  const isCallActive =
+    status === "calling" || status === "connecting" || status === "connected";
+
+  const callContent = (
+    <div
+      className={
+        isCallActive
+          ? "flex flex-col h-screen w-screen fixed inset-0 z-[9999] bg-background"
+          : "flex flex-col h-[calc(100vh-3.5rem)] max-w-5xl mx-auto relative bg-background"
+      }
+    >
+      <AnimatePresence mode="wait">
+        {/* ====== IDLE STATE ====== */}
+        {status === "idle" && (
+          <motion.div
+            key="idle"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center gap-8 p-6"
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={goBack}
+              className="absolute top-4 left-4"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+
+            <div className="w-28 h-28 rounded-full bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center overflow-hidden ring-4 ring-secondary/20">
+              <PrivateImage
+                src={currentGroup?.avatar_url}
+                fallback={<Users className="w-12 h-12 text-secondary" />}
+              />
+            </div>
+
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-foreground mb-1">
+                {currentGroup?.name || "Group"}
+              </h2>
+              <p className="text-muted-foreground text-sm">
+                {members.length} member{members.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+
+            <Button
+              onClick={startCall}
+              size="lg"
+              className="gap-3 rounded-full px-10 py-6 text-lg neon-glow-blue"
+            >
+              <Video className="w-6 h-6" />
+              Start Group Call
+            </Button>
+          </motion.div>
+        )}
+
+        {/* ====== CALLING STATE — Ringing out ====== */}
+        {status === "calling" && (
+          <motion.div
+            key="calling"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center gap-8 p-6"
+          >
+            <div className="relative w-28 h-28">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="absolute inset-0 rounded-full border-2 border-secondary/40"
+                  initial={{ scale: 1, opacity: 0.6 }}
+                  animate={{ scale: 2.5, opacity: 0 }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    delay: i * 0.6,
+                    ease: "easeOut",
+                  }}
+                />
+              ))}
+              <div className="w-28 h-28 rounded-full bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center overflow-hidden ring-4 ring-secondary/40 relative z-10">
                 <PrivateImage
                   src={currentGroup?.avatar_url}
                   fallback={<Users className="w-12 h-12 text-secondary" />}
                 />
               </div>
+            </div>
 
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-foreground mb-1">
-                  {currentGroup?.name || "Group"}
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {members.length} member{members.length !== 1 ? "s" : ""}
-                </p>
-              </div>
-
-              <Button
-                onClick={startCall}
-                size="lg"
-                className="gap-3 rounded-full px-10 py-6 text-lg neon-glow-blue"
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-foreground mb-1">
+                {currentGroup?.name || "Group"}
+              </h2>
+              <motion.p
+                className="text-secondary text-sm font-medium"
+                animate={{ opacity: [1, 0.4, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
               >
-                <Video className="w-6 h-6" />
-                Start Group Call
-              </Button>
-            </motion.div>
-          )}
+                Ringing...
+              </motion.p>
+              <p className="text-muted-foreground text-xs mt-2">
+                Waiting for members to join
+              </p>
+            </div>
 
-          {/* ====== CALLING STATE — Ringing out ====== */}
-          {status === "calling" && (
-            <motion.div
-              key="calling"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col items-center justify-center gap-8 p-6"
+            {/* Show local video preview during calling */}
+            <div className="w-40 h-52 rounded-2xl overflow-hidden border-2 border-border/30 shadow-xl">
+              <video
+                ref={localVideoCallbackRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+                style={{ transform: "scaleX(-1)" }}
+              />
+            </div>
+
+            <Button
+              onClick={cancelCall}
+              size="lg"
+              className="rounded-full px-8 py-6 bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-3"
             >
-              <div className="relative w-28 h-28">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="absolute inset-0 rounded-full border-2 border-secondary/40"
-                    initial={{ scale: 1, opacity: 0.6 }}
-                    animate={{ scale: 2.5, opacity: 0 }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      delay: i * 0.6,
-                      ease: "easeOut",
-                    }}
-                  />
-                ))}
-                <div className="w-28 h-28 rounded-full bg-gradient-to-br from-secondary/20 to-primary/20 flex items-center justify-center overflow-hidden ring-4 ring-secondary/40 relative z-10">
+              <PhoneOff className="w-6 h-6" />
+              Cancel
+            </Button>
+          </motion.div>
+        )}
+
+        {/* ====== CONNECTING STATE ====== */}
+        {status === "connecting" && (
+          <motion.div
+            key="connecting"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center gap-6 p-6"
+          >
+            <div className="w-20 h-20 rounded-full bg-secondary/10 flex items-center justify-center">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="w-12 h-12 border-[3px] border-secondary/20 border-t-secondary rounded-full"
+              />
+            </div>
+            <p className="text-foreground font-medium">
+              Connecting to group call...
+            </p>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (
+                  currentUser?.id &&
+                  hostUserIdRef.current === currentUser.id
+                ) {
+                  sendSignal("end-all");
+                } else {
+                  sendSignal("end");
+                }
+                cleanupAll();
+                setStatus("idle");
+              }}
+              className="text-muted-foreground"
+            >
+              Cancel
+            </Button>
+          </motion.div>
+        )}
+
+        {/* ====== CONNECTED STATE — Active group video call ====== */}
+        {status === "connected" && (
+          <motion.div
+            key="connected"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 relative bg-black overflow-hidden flex flex-col min-h-0"
+          >
+            {/* Top info bar */}
+            <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between z-20">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
                   <PrivateImage
                     src={currentGroup?.avatar_url}
-                    fallback={<Users className="w-12 h-12 text-secondary" />}
+                    fallback={<Users className="w-4 h-4 text-white/70" />}
                   />
                 </div>
-              </div>
-
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-foreground mb-1">
-                  {currentGroup?.name || "Group"}
-                </h2>
-                <motion.p
-                  className="text-secondary text-sm font-medium"
-                  animate={{ opacity: [1, 0.4, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  Ringing...
-                </motion.p>
-                <p className="text-muted-foreground text-xs mt-2">
-                  Waiting for members to join
-                </p>
-              </div>
-
-              {/* Show local video preview during calling */}
-              <div className="w-40 h-52 rounded-2xl overflow-hidden border-2 border-border/30 shadow-xl">
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                  style={{ transform: "scaleX(-1)" }}
-                />
-              </div>
-
-              <Button
-                onClick={cancelCall}
-                size="lg"
-                className="rounded-full px-8 py-6 bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-3"
-              >
-                <PhoneOff className="w-6 h-6" />
-                Cancel
-              </Button>
-            </motion.div>
-          )}
-
-          {/* ====== CONNECTING STATE ====== */}
-          {status === "connecting" && (
-            <motion.div
-              key="connecting"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col items-center justify-center gap-6 p-6"
-            >
-              <div className="w-20 h-20 rounded-full bg-secondary/10 flex items-center justify-center">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="w-12 h-12 border-[3px] border-secondary/20 border-t-secondary rounded-full"
-                />
-              </div>
-              <p className="text-foreground font-medium">
-                Connecting to group call...
-              </p>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  sendSignal("end");
-                  cleanupAll();
-                  setStatus("idle");
-                }}
-                className="text-muted-foreground"
-              >
-                Cancel
-              </Button>
-            </motion.div>
-          )}
-
-          {/* ====== CONNECTED STATE — Active group video call ====== */}
-          {status === "connected" && (
-            <motion.div
-              key="connected"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 relative bg-black overflow-hidden flex flex-col"
-            >
-              {/* Top info bar */}
-              <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between z-20">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                    <PrivateImage
-                      src={currentGroup?.avatar_url}
-                      fallback={<Users className="w-4 h-4 text-white/70" />}
-                    />
-                  </div>
-                  <div>
-                    <p className="text-white text-sm font-medium">
-                      {currentGroup?.name}
-                    </p>
-                    <p className="text-white/60 text-xs">
-                      {formatDuration(callDuration)} ·{" "}
-                      {connectedPeers.length + 1} participant
-                      {connectedPeers.length !== 0 ? "s" : ""}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-green-400 text-xs font-medium">
-                    Live
-                  </span>
+                <div>
+                  <p className="text-white text-sm font-medium">
+                    {currentGroup?.name}
+                  </p>
+                  <p className="text-white/60 text-xs">
+                    {formatDuration(callDuration)} · {participantCount}{" "}
+                    participant
+                    {participantCount > 1 ? "s" : ""}
+                    {" · "}
+                    <span
+                      className={
+                        callDuration >= MAX_CALL_DURATION - 60
+                          ? "text-red-400 font-medium"
+                          : "text-white/40"
+                      }
+                    >
+                      {formatDuration(
+                        Math.max(0, MAX_CALL_DURATION - callDuration),
+                      )}{" "}
+                      left
+                    </span>
+                  </p>
                 </div>
               </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <span className="text-green-400 text-xs font-medium">Live</span>
+              </div>
+            </div>
 
-              {/* Video Grid */}
+            {/* Video Grid */}
+            <div className="flex-1 min-h-0 pt-16 pb-3 px-2">
               <div
-                className={`flex-1 grid ${getGridClass(connectedPeers.length + 1)} gap-1 p-1 pt-16 pb-24`}
+                className={`h-full w-full mx-auto grid ${getGridClass(participantCount)} gap-2 auto-rows-fr`}
               >
-                {/* Local video */}
-                <div className="relative rounded-xl overflow-hidden bg-gray-900">
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  {!isCameraOn && (
-                    <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                      <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">
-                          {getInitials(currentUser?.name || currentUser?.email)}
-                        </span>
+                {participants.map((participant, index) => {
+                  const displayName = participant.isLocal
+                    ? "You"
+                    : participant.profile?.name ||
+                      participant.profile?.username ||
+                      "User";
+                  const isVideoOff = participant.isLocal
+                    ? !isCameraOn
+                    : !participant.stream;
+
+                  return (
+                    <div
+                      key={participant.userId}
+                      className={`relative rounded-2xl overflow-hidden bg-gray-900 min-h-0 h-full ring-1 ring-white/10 ${getTileClass(participantCount, index)}`}
+                    >
+                      {participant.isLocal ? (
+                        <video
+                          ref={localVideoCallbackRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                          style={{ transform: "scaleX(-1)" }}
+                        />
+                      ) : participant.stream ? (
+                        <RemoteVideo stream={participant.stream} />
+                      ) : null}
+
+                      {isVideoOff && (
+                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
+                            <span className="text-2xl font-bold text-white">
+                              {getInitials(
+                                participant.profile?.name ||
+                                  participant.profile?.username ||
+                                  displayName,
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/75 to-transparent">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2.5 py-1 max-w-[80%]">
+                            <span className="text-white text-xs font-medium truncate block">
+                              {displayName}
+                            </span>
+                          </div>
+
+                          {!participant.isLocal && !participant.stream && (
+                            <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 shrink-0">
+                              <span className="text-white/70 text-[10px] font-medium">
+                                Connecting...
+                              </span>
+                            </div>
+                          )}
+
+                          {participant.isLocal && isMuted && (
+                            <div className="bg-red-500/80 rounded-full p-1.5 shrink-0">
+                              <MicOff className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
-                  <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
-                    <span className="text-white text-[10px] font-medium">
-                      You
-                    </span>
-                  </div>
-                  {isMuted && (
-                    <div className="absolute top-2 right-2 bg-red-500/80 rounded-full p-1">
-                      <MicOff className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-                </div>
+                  );
+                })}
 
-                {/* Remote videos */}
-                {connectedPeers.map((peer) => (
-                  <div
-                    key={peer.userId}
-                    className="relative rounded-xl overflow-hidden bg-gray-900"
-                  >
-                    <RemoteVideo stream={peer.stream} />
-                    <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-0.5">
-                      <span className="text-white text-[10px] font-medium">
-                        {peer.profile?.name || peer.profile?.username || "User"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Empty slots placeholder */}
-                {connectedPeers.length === 0 && (
-                  <div className="rounded-xl bg-gray-900/50 flex flex-col items-center justify-center gap-3">
+                {participantCount === 1 && (
+                  <div className="rounded-2xl bg-gray-900/50 flex flex-col items-center justify-center gap-3 min-h-[200px]">
                     <motion.div
                       animate={{ opacity: [0.3, 0.7, 0.3] }}
                       transition={{ duration: 2, repeat: Infinity }}
@@ -816,9 +1323,11 @@ const GroupStream = () => {
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Controls */}
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/50 backdrop-blur-xl rounded-full px-6 py-4 z-20">
+            {/* Controls */}
+            <div className="px-4 pb-4 pt-1 z-20">
+              <div className="mx-auto w-fit flex items-center gap-4 bg-black/50 backdrop-blur-xl rounded-full px-6 py-4">
                 <button
                   onClick={toggleMute}
                   className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
@@ -854,54 +1363,62 @@ const GroupStream = () => {
                   <PhoneOff className="w-6 h-6" />
                 </button>
               </div>
-            </motion.div>
-          )}
+            </div>
+          </motion.div>
+        )}
 
-          {/* ====== ENDED / MISSED STATE ====== */}
-          {(status === "ended" || status === "missed") && (
-            <motion.div
-              key="ended"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex-1 flex flex-col items-center justify-center gap-6 p-6"
+        {/* ====== ENDED / MISSED STATE ====== */}
+        {(status === "ended" || status === "missed") && (
+          <motion.div
+            key="ended"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center gap-6 p-6"
+          >
+            <div
+              className={`w-20 h-20 rounded-full flex items-center justify-center ${
+                status === "ended" ? "bg-muted/20" : "bg-destructive/10"
+              }`}
             >
-              <div
-                className={`w-20 h-20 rounded-full flex items-center justify-center ${
-                  status === "ended" ? "bg-muted/20" : "bg-destructive/10"
+              <PhoneOff
+                className={`w-9 h-9 ${
+                  status === "ended"
+                    ? "text-muted-foreground"
+                    : "text-destructive"
                 }`}
-              >
-                <PhoneOff
-                  className={`w-9 h-9 ${
-                    status === "ended"
-                      ? "text-muted-foreground"
-                      : "text-destructive"
-                  }`}
-                />
-              </div>
-              <div className="text-center">
-                <h2 className="text-xl font-bold text-foreground mb-1">
-                  {status === "ended" ? "Call Ended" : "No Answer"}
-                </h2>
-                {status === "ended" && callDuration > 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    Duration: {formatDuration(callDuration)}
-                  </p>
-                )}
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/groups/${groupId}`)}
-                className="rounded-full px-6"
-              >
-                Back to group
-              </Button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </AppLayout>
+              />
+            </div>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-foreground mb-1">
+                {status === "ended" ? "Call Ended" : "No Answer"}
+              </h2>
+              {status === "ended" && callDuration > 0 && (
+                <p className="text-muted-foreground text-sm">
+                  Duration: {formatDuration(callDuration)}
+                </p>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/groups/${groupId}`)}
+              className="rounded-full px-6"
+            >
+              Back to group
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
+
+  // During active call, render full-screen without AppLayout
+  if (isCallActive) {
+    return callContent;
+  }
+
+  // Idle / ended / missed — show with normal layout
+  return <AppLayout>{callContent}</AppLayout>;
 };
 
 // Helper component for remote video

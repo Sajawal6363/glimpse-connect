@@ -12,12 +12,15 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import PublicRoute from "@/components/auth/PublicRoute";
 import CookieConsent from "@/components/CookieConsent";
 import IncomingCallOverlay from "@/components/IncomingCallOverlay";
+import CallFloatingWidget from "@/components/CallFloatingWidget";
 
 // Pages
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ConfirmEmail from "./pages/ConfirmEmail";
 import Stream from "./pages/Stream";
+import StreamHistory from "./pages/StreamHistory";
 import Chat from "./pages/Chat";
 import ChatDetail from "./pages/ChatDetail";
 import GroupChatDetail from "./pages/GroupChatDetail";
@@ -117,6 +120,14 @@ const AppInner = () => {
             </PublicRoute>
           }
         />
+        <Route
+          path="/confirm-email"
+          element={
+            <PublicRoute>
+              <ConfirmEmail />
+            </PublicRoute>
+          }
+        />
 
         {/* Protected pages */}
         <Route
@@ -124,6 +135,14 @@ const AppInner = () => {
           element={
             <ProtectedRoute>
               <Stream />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stream/history"
+          element={
+            <ProtectedRoute>
+              <StreamHistory />
             </ProtectedRoute>
           }
         />
@@ -236,6 +255,7 @@ const AppInner = () => {
       </Routes>
       <CookieConsent />
       <IncomingCallOverlay />
+      <CallFloatingWidget />
     </>
   );
 };

@@ -76,7 +76,7 @@ const Navbar = () => {
         <Link to={user ? `/profile/${user.username}` : "/profile/me"}>
           <Avatar className="w-8 h-8 ring-2 ring-primary/30">
             <AvatarImage src={avatarUrl || undefined} />
-            <AvatarFallback className="bg-gradient-to-br from-primary to-secondary text-xs font-bold text-primary-foreground">
+            <AvatarFallback className="bg-gradient-to-br from-primary object-cover to-secondary text-xs font-bold text-primary-foreground">
               {initials}
             </AvatarFallback>
           </Avatar>

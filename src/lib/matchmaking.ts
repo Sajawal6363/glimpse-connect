@@ -5,6 +5,10 @@ export interface MatchPreferences {
   country?: string;
   gender?: string;
   interests?: string[];
+  /** The user's own profile gender (male/female/other) — used by others to filter */
+  profileGender?: string;
+  /** The user's own profile country_code (e.g. "PK") — used by others to filter */
+  profileCountry?: string;
 }
 
 interface QueueEntry {
@@ -39,7 +43,8 @@ class MatchmakingService {
     this.onTimeoutCallbacks = [];
 
     // Use a presence channel so all users in the queue can see each other
-    this.channel = supabase.channel("matchmaking-queue", {
+    const channelName = `matchmaking-queue`;
+    this.channel = supabase.channel(channelName, {
       config: {
         presence: { key: userId },
         broadcast: { self: false },
@@ -51,13 +56,22 @@ class MatchmakingService {
         if (this._matched) return;
         this._tryMatch();
       })
+      .on("presence", { event: "join" }, () => {
+        // Also try matching immediately when a new user joins
+        if (this._matched) return;
+        setTimeout(() => this._tryMatch(), 500);
+      })
       .on("broadcast", { event: "match-request" }, async (payload) => {
         if (this._matched) return;
-        const { fromUserId, fromProfile } = payload.payload;
+        const { fromUserId, fromProfile, targetUserId } = payload.payload;
+        // Only accept if this match-request is aimed at us
+        if (targetUserId && targetUserId !== userId) return;
         if (fromUserId && fromProfile && fromUserId !== userId) {
           // Accept the match — the other user initiated
           this._matched = true;
           this._clearTimers();
+          // Leave presence so we don't get matched again
+          this.channel?.untrack();
           this.onMatchCallbacks.forEach((cb) => cb(fromProfile as Profile));
         }
       })
@@ -68,13 +82,15 @@ class MatchmakingService {
             preferences,
             joinedAt: Date.now(),
           });
+          // Immediate match attempt after joining
+          setTimeout(() => this._tryMatch(), 1000);
         }
       });
 
     // Periodically try to match (covers race conditions)
     this.pollInterval = setInterval(() => {
       if (!this._matched) this._tryMatch();
-    }, 3000);
+    }, 2000);
 
     // Timeout after 120 seconds (increased for low-traffic)
     this.searchTimeout = setTimeout(() => {
@@ -96,35 +112,103 @@ class MatchmakingService {
         | Record<string, unknown>
         | undefined;
       if (presence) {
+        // Only consider entries that are not too old (60s max — prevents stale matches)
+        const joinedAt = (presence.joinedAt || 0) as number;
+        if (Date.now() - joinedAt > 120_000) continue;
+
         entries.push({
           userId: presence.userId as string,
           preferences: (presence.preferences || {}) as MatchPreferences,
-          joinedAt: (presence.joinedAt || 0) as number,
+          joinedAt,
         });
       }
     }
 
     if (entries.length === 0) return;
 
-    // Find the best match based on preferences
+    // ── STRICT FILTERING ──
+    // Match against the other user's ACTUAL profile data.
+    // If I set gender filter "female" → the other user's profileGender must be "female".
+    // If I set country filter "PK" → the other user's profileCountry must be "PK".
+    // Also respect the reverse: the other user's filters must match MY profile data.
+
+    const myGenderFilter = this.preferences.gender; // what I want to see
+    const myCountryFilter = this.preferences.country; // what I want to see
+    const myProfileGender = this.preferences.profileGender; // what I am
+    const myProfileCountry = this.preferences.profileCountry; // where I'm from
+
+    const eligible = entries.filter((entry) => {
+      const theirGenderFilter = entry.preferences.gender;
+      const theirCountryFilter = entry.preferences.country;
+      const theirProfileGender = entry.preferences.profileGender;
+      const theirProfileCountry = entry.preferences.profileCountry;
+
+      // MY gender filter vs THEIR actual profile gender
+      if (
+        myGenderFilter &&
+        theirProfileGender &&
+        myGenderFilter !== theirProfileGender
+      ) {
+        return false;
+      }
+
+      // THEIR gender filter vs MY actual profile gender
+      if (
+        theirGenderFilter &&
+        myProfileGender &&
+        theirGenderFilter !== myProfileGender
+      ) {
+        return false;
+      }
+
+      // MY country filter vs THEIR actual profile country
+      if (
+        myCountryFilter &&
+        theirProfileCountry &&
+        myCountryFilter !== theirProfileCountry
+      ) {
+        return false;
+      }
+
+      // THEIR country filter vs MY actual profile country
+      if (
+        theirCountryFilter &&
+        myProfileCountry &&
+        theirCountryFilter !== myProfileCountry
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    // Find the best match based on preference scoring among eligible users
     let bestMatch: QueueEntry | null = null;
     let bestScore = -1;
 
-    for (const entry of entries) {
+    for (const entry of eligible) {
       let score = 0;
 
-      // Country match
+      // Exact country filter → profile match (highest priority)
       if (
-        this.preferences.country &&
-        entry.preferences.country === this.preferences.country
+        myCountryFilter &&
+        entry.preferences.profileCountry === myCountryFilter
       ) {
-        score += 3;
+        score += 5;
       }
 
-      // Gender match
+      // Exact gender filter → profile match
       if (
-        this.preferences.gender &&
-        entry.preferences.gender === this.preferences.gender
+        myGenderFilter &&
+        entry.preferences.profileGender === myGenderFilter
+      ) {
+        score += 4;
+      }
+
+      // Same country (both from same place, even without filter)
+      if (
+        myProfileCountry &&
+        entry.preferences.profileCountry === myProfileCountry
       ) {
         score += 2;
       }
@@ -138,8 +222,11 @@ class MatchmakingService {
       }
     }
 
-    // Take the first available if no preference matches
-    if (!bestMatch) bestMatch = entries[0];
+    // Fall back to first eligible if scoring didn't pick one
+    if (!bestMatch && eligible.length > 0) bestMatch = eligible[0];
+
+    // If NO eligible users exist (strict filter removed everyone), skip
+    if (!bestMatch) return;
 
     if (!bestMatch) return;
 
@@ -163,7 +250,7 @@ class MatchmakingService {
       .eq("id", this.userId)
       .maybeSingle();
 
-    // Send match-request to the other user
+    // Send match-request to the other user, including the targetUserId
     this.channel?.send({
       type: "broadcast",
       event: "match-request",
@@ -177,6 +264,8 @@ class MatchmakingService {
     // We also accept the match on our end
     this._matched = true;
     this._clearTimers();
+    // Leave presence so we don't get matched again
+    this.channel?.untrack();
     this.onMatchCallbacks.forEach((cb) => cb(matchedProfile as Profile));
   }
 

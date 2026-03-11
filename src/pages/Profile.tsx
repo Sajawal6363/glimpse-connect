@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,6 +19,8 @@ import {
   Lock,
   Globe,
   X,
+  Camera,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +48,11 @@ const MAX_GALLERY_IMAGES = 5;
 const Profile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
-  const { user: currentUser, isLoading: authLoading } = useAuthStore();
+  const {
+    user: currentUser,
+    isLoading: authLoading,
+    uploadBanner,
+  } = useAuthStore();
   const {
     sendFollowRequest,
     cancelFollowRequest,
@@ -78,6 +84,8 @@ const Profile = () => {
     null,
   );
   const [uploadingGallery, setUploadingGallery] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -394,6 +402,42 @@ const Profile = () => {
     });
   };
 
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Banner image must be less than 2MB.",
+        variant: "destructive",
+      });
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingBanner(true);
+    try {
+      await uploadBanner(file);
+      // Re-fetch profile to get the updated banner_url
+      const { data: updated } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", currentUser.id)
+        .maybeSingle();
+      if (updated) setProfile(updated as ProfileType);
+      toast({ title: "Banner updated!" });
+    } catch {
+      toast({
+        title: "Upload failed",
+        description: "Could not upload banner.",
+        variant: "destructive",
+      });
+    }
+    setUploadingBanner(false);
+    e.target.value = "";
+  };
+
   const getFollowButton = () => {
     switch (followStatus) {
       case "none":
@@ -493,17 +537,51 @@ const Profile = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass rounded-3xl p-8 text-center relative overflow-hidden"
+          className="glass rounded-3xl text-center relative overflow-hidden"
         >
-          {/* Background gradient */}
-          <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/10" />
+          {/* Banner — uploadable for own profile */}
+          <div className="relative h-36 sm:h-44 w-full group">
+            {profile.banner_url ? (
+              <PrivateImage
+                src={profile.banner_url}
+                alt="Profile banner"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-primary/20 via-secondary/20 to-accent/10" />
+            )}
+            {/* Dark overlay for contrast */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
+            {isOwnProfile && (
+              <button
+                onClick={() => bannerInputRef.current?.click()}
+                disabled={uploadingBanner}
+                className="absolute top-3 right-3 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm text-white/80 hover:text-white rounded-xl px-3 py-1.5 text-xs font-medium transition-all opacity-0 group-hover:opacity-100 z-10"
+              >
+                {uploadingBanner ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
+                {uploadingBanner ? "Uploading..." : "Edit Banner"}
+              </button>
+            )}
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleBannerUpload}
+            />
+          </div>
 
-          {/* Avatar */}
-          <div className="relative z-10 mb-4">
-            <div className="w-28 h-28 mx-auto rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-4xl font-bold text-primary-foreground ring-4 ring-primary/30 neon-glow-blue overflow-hidden">
+          {/* Avatar — positioned to overlap the banner */}
+          <div className="relative z-10 -mt-14 mb-4">
+            <div className="w-28 h-28 mx-auto rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-4xl font-bold text-primary-foreground ring-4 ring-background neon-glow-blue overflow-hidden">
               <PrivateImage
                 src={profile.avatar_url}
                 fallback={getInitials(profile.name || profile.username)}
+                className="w-full h-full object-cover"
               />
             </div>
             {profile.is_online && (
@@ -512,7 +590,7 @@ const Profile = () => {
           </div>
 
           {/* Info */}
-          <div className="relative z-10">
+          <div className="relative z-10 px-8 pb-8">
             <div className="flex items-center justify-center gap-2 mb-1">
               <h1 className="text-2xl font-bold text-foreground">
                 {profile.name}

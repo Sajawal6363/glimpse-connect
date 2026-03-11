@@ -18,12 +18,14 @@ import {
   User,
   Bell,
   Home,
+  Clock,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const mainItems = [
   { title: "Home", url: "/", icon: Home },
   { title: "Stream", url: "/stream", icon: Video },
+  { title: "History", url: "/stream/history", icon: Clock },
   { title: "Chat", url: "/chat", icon: MessageCircle },
   { title: "Explore", url: "/explore", icon: Compass },
 ];

@@ -2,6 +2,58 @@ import { create } from "zustand";
 import { supabase, type Profile } from "@/lib/supabase";
 import { realtimeService } from "@/lib/realtime";
 
+const PENDING_AVATAR_STORAGE_KEY = "pending_signup_avatar";
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Failed to read avatar file"));
+      }
+    };
+    reader.onerror = () => reject(new Error("Failed to read avatar file"));
+    reader.readAsDataURL(file);
+  });
+
+const persistPendingAvatar = async (email: string, file: File) => {
+  if (typeof window === "undefined") return;
+  const dataUrl = await fileToDataUrl(file);
+  localStorage.setItem(
+    PENDING_AVATAR_STORAGE_KEY,
+    JSON.stringify({
+      email,
+      dataUrl,
+      fileName: file.name,
+      savedAt: Date.now(),
+    }),
+  );
+};
+
+const clearPendingAvatar = () => {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PENDING_AVATAR_STORAGE_KEY);
+};
+
+const getPendingAvatar = () => {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem(PENDING_AVATAR_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as {
+      email: string;
+      dataUrl: string;
+      fileName: string;
+      savedAt: number;
+    };
+  } catch {
+    clearPendingAvatar();
+    return null;
+  }
+};
+
 interface AuthState {
   user: Profile | null;
   isAuthenticated: boolean;
@@ -21,12 +73,14 @@ interface AuthState {
     bio?: string;
     interests: string[];
     avatarUrl?: string;
+    avatarFile?: File | null;
   }) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   loginWithGithub: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<Profile>) => Promise<void>;
   uploadAvatar: (file: File) => Promise<string>;
+  uploadBanner: (file: File) => Promise<string>;
   checkAuth: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (newPassword: string) => Promise<void>;
@@ -69,6 +123,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             name: meta.name || meta.username || "User",
             bio: meta.bio || "",
             avatar_url: meta.avatar_url || "",
+            banner_url: meta.banner_url || "",
             date_of_birth:
               meta.date_of_birth || meta.dateOfBirth || "2000-01-01",
             gender: meta.gender || "prefer_not_to_say",
@@ -88,6 +143,41 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         if (profile) {
+          const pendingAvatar = getPendingAvatar();
+          if (
+            pendingAvatar &&
+            session.user.email &&
+            pendingAvatar.email.toLowerCase() ===
+              session.user.email.toLowerCase() &&
+            !profile.avatar_url
+          ) {
+            try {
+              const avatarBlob = await (
+                await fetch(pendingAvatar.dataUrl)
+              ).blob();
+              const originalExt =
+                pendingAvatar.fileName.split(".").pop() || "jpg";
+              const avatarPath = `${profile.id}/avatars/avatar-${Date.now()}.${originalExt}`;
+              const { error: uploadError } = await supabase.storage
+                .from("connectlive")
+                .upload(avatarPath, avatarBlob);
+
+              if (!uploadError) {
+                await supabase
+                  .from("profiles")
+                  .update({
+                    avatar_url: avatarPath,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq("id", profile.id);
+                profile = { ...profile, avatar_url: avatarPath };
+                clearPendingAvatar();
+              }
+            } catch (e) {
+              console.warn("Deferred avatar upload failed on checkAuth:", e);
+            }
+          }
+
           set({
             user: profile,
             isAuthenticated: true,
@@ -134,6 +224,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           name: meta.name || meta.username || "User",
           bio: meta.bio || "",
           avatar_url: meta.avatar_url || "",
+          banner_url: meta.banner_url || "",
           date_of_birth: meta.date_of_birth || meta.dateOfBirth || "2000-01-01",
           gender: meta.gender || "prefer_not_to_say",
           country: meta.country || "",
@@ -152,6 +243,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       if (profile) {
+        const pendingAvatar = getPendingAvatar();
+        if (
+          pendingAvatar &&
+          pendingAvatar.email.toLowerCase() === email.toLowerCase() &&
+          !profile.avatar_url
+        ) {
+          try {
+            const avatarBlob = await (
+              await fetch(pendingAvatar.dataUrl)
+            ).blob();
+            const originalExt =
+              pendingAvatar.fileName.split(".").pop() || "jpg";
+            const avatarPath = `${profile.id}/avatars/avatar-${Date.now()}.${originalExt}`;
+            const { error: uploadError } = await supabase.storage
+              .from("connectlive")
+              .upload(avatarPath, avatarBlob);
+
+            if (!uploadError) {
+              await supabase
+                .from("profiles")
+                .update({
+                  avatar_url: avatarPath,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", profile.id);
+              profile = { ...profile, avatar_url: avatarPath };
+              clearPendingAvatar();
+            }
+          } catch (e) {
+            console.warn("Deferred avatar upload failed:", e);
+          }
+        }
+
         set({
           user: profile,
           isAuthenticated: true,
@@ -201,18 +325,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     if (!session) {
-      // Email confirmation may be off but session not auto-returned — sign in
-      const { data: signInData, error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: data.email,
-          password: data.password,
-        });
-      if (signInError) throw new Error(signInError.message);
-      session = signInData.session;
-    }
-
-    if (!session) {
       // Email confirmation is likely enabled — show confirmation screen
+      if (data.avatarFile) {
+        try {
+          await persistPendingAvatar(data.email, data.avatarFile);
+        } catch (e) {
+          console.warn("Could not store pending signup avatar:", e);
+        }
+      }
       set({
         needsEmailConfirmation: true,
         pendingEmail: data.email,
@@ -223,7 +343,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     const userId = authData.user.id;
 
-    // Step 3: Insert the profile
+    // Step 3: Upload avatar if a file was provided (must happen while session is active)
+    // Store the storage PATH (e.g. "avatars/xyz.jpg"), NOT the public URL,
+    // so that PrivateImage / useSignedUrl can generate proper signed URLs.
+    let avatarUrl = data.avatarUrl || "";
+    if (data.avatarFile) {
+      try {
+        const fileExt = data.avatarFile.name.split(".").pop() || "jpg";
+        const fileName = `avatar-${Date.now()}.${fileExt}`;
+        const storagePath = `${userId}/avatars/${fileName}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("connectlive")
+          .upload(storagePath, data.avatarFile);
+        if (!uploadErr) {
+          // Store the path, not the full public URL
+          avatarUrl = storagePath;
+        } else {
+          console.warn(
+            "Avatar upload failed during registration:",
+            uploadErr.message,
+          );
+        }
+      } catch (e) {
+        console.warn("Avatar upload error during registration:", e);
+      }
+    }
+
+    // Step 4: Insert the profile
     const profile = {
       id: userId,
       email: data.email,
@@ -235,7 +381,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       country_code: data.countryCode,
       bio: data.bio || "",
       interests: data.interests,
-      avatar_url: data.avatarUrl || "",
+      avatar_url: avatarUrl,
+      banner_url: "",
       is_online: true,
     };
 
@@ -244,7 +391,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       .insert(profile);
     if (profileError) throw new Error(profileError.message);
 
-    // Step 4: Create default settings (don't throw if it fails)
+    // Step 5: Create default settings (don't throw if it fails)
     await supabase
       .from("user_settings")
       .insert({ user_id: userId })
@@ -253,15 +400,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.warn("Could not create default settings:", error.message);
       });
 
-    // Step 5: Set the user in state immediately from what we already have
-    // (avoids the .single() 0-rows issue if RLS SELECT hasn't propagated yet)
+    // Step 6: Set the user in state immediately from what we already have
     const fullProfile: Profile = {
       id: userId,
       email: data.email,
       username: data.username,
       name: data.name,
       bio: data.bio || "",
-      avatar_url: data.avatarUrl || "",
+      avatar_url: avatarUrl,
+      banner_url: "",
       date_of_birth: data.dateOfBirth,
       gender: data.gender as Profile["gender"],
       country: data.country,
@@ -278,6 +425,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    // Also update auth metadata with the final avatar URL
+    if (avatarUrl) {
+      await supabase.auth.updateUser({
+        data: { avatar_url: avatarUrl },
+      });
+    }
 
     set({ user: fullProfile, isAuthenticated: true, isLoading: false });
     realtimeService.trackPresence(userId);
@@ -342,26 +496,58 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error("Image must be less than 1MB");
     }
 
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${userId}.${fileExt}`;
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const fileName = `avatar-${Date.now()}.${fileExt}`;
 
+    const storagePath = `${userId}/avatars/${fileName}`;
     const { error: uploadError } = await supabase.storage
       .from("connectlive")
-      .upload(`avatars/${fileName}`, file, { upsert: true });
+      .upload(storagePath, file);
 
     if (uploadError) throw new Error(uploadError.message);
 
-    const { data: urlData } = supabase.storage
-      .from("connectlive")
-      .getPublicUrl(`avatars/${fileName}`);
-    // Append timestamp to bust browser cache when avatar is re-uploaded
-    const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+    // Store the path so PrivateImage / useSignedUrl generates signed URLs
+    const avatarUrl = storagePath;
 
     // Only update profile in DB if user is already registered
     if (get().user) {
       await get().updateProfile({ avatar_url: avatarUrl });
     }
     return avatarUrl;
+  },
+
+  uploadBanner: async (file) => {
+    let userId = get().user?.id;
+    if (!userId) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      userId = session?.user?.id;
+    }
+    if (!userId) throw new Error("Not authenticated");
+
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB for banners
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error("Banner image must be less than 2MB");
+    }
+
+    const fileExt = file.name.split(".").pop() || "jpg";
+    const fileName = `banner-${Date.now()}.${fileExt}`;
+
+    const storagePath = `${userId}/banners/${fileName}`;
+    const { error: uploadError } = await supabase.storage
+      .from("connectlive")
+      .upload(storagePath, file);
+
+    if (uploadError) throw new Error(uploadError.message);
+
+    // Store the path so PrivateImage / useSignedUrl generates signed URLs
+    const bannerUrl = storagePath;
+
+    if (get().user) {
+      await get().updateProfile({ banner_url: bannerUrl });
+    }
+    return bannerUrl;
   },
 
   resetPassword: async (email) => {

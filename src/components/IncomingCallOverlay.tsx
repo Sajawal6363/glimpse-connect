@@ -34,6 +34,61 @@ const IncomingCallOverlay = () => {
   } | null>(null);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const ringtoneIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
+  const playRingtoneBeep = () => {
+    try {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.15, ctx.currentTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.36);
+
+      setTimeout(() => {
+        ctx.close().catch(() => {});
+      }, 500);
+    } catch {
+      // Ignore audio initialization failures (browser policy / permissions)
+    }
+  };
+
+  useEffect(() => {
+    if (!incomingCall) {
+      if (ringtoneIntervalRef.current) {
+        clearInterval(ringtoneIntervalRef.current);
+        ringtoneIntervalRef.current = null;
+      }
+      return;
+    }
+
+    playRingtoneBeep();
+    ringtoneIntervalRef.current = setInterval(() => {
+      playRingtoneBeep();
+    }, 1400);
+
+    return () => {
+      if (ringtoneIntervalRef.current) {
+        clearInterval(ringtoneIntervalRef.current);
+        ringtoneIntervalRef.current = null;
+      }
+    };
+  }, [incomingCall]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -152,14 +207,16 @@ const IncomingCallOverlay = () => {
 
   const handleAccept = () => {
     if (!incomingCall) return;
-    sendSignalToCaller("accept");
-    sendRoomSignal("accept");
+    // Do NOT send accept signals here — let the FriendStream/GroupStream page
+    // send them AFTER it has joined the signaling room and is ready to receive the offer.
+    // This prevents the race condition where the caller sends the offer before
+    // the receiver's page has mounted and subscribed to the signaling channel.
 
     const { callerId, roomId, isGroup } = incomingCall;
     setIncomingCall(null);
 
     if (isGroup) {
-      navigate(`/stream/group/${roomId}?mode=answer`);
+      navigate(`/stream/group/${roomId}?mode=answer&caller=${callerId}`);
     } else {
       navigate(`/stream/friend/${callerId}?mode=answer`);
     }

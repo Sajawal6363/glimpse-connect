@@ -26,6 +26,7 @@ export interface Profile {
   name: string;
   bio: string;
   avatar_url: string;
+  banner_url: string;
   date_of_birth: string;
   gender: "male" | "female" | "other" | "prefer_not_to_say";
   country: string;

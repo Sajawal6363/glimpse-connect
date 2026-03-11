@@ -132,7 +132,21 @@ const Notifications = () => {
         notif.type === "follow_request") &&
       notif.from_user_id
     ) {
-      navigate(`/profile/${notif.from_user_id}`);
+      // Use the username from from_user for navigation (route expects /profile/:username)
+      const username = notif.from_user?.username;
+      if (username) {
+        navigate(`/profile/${username}`);
+      } else {
+        // Fallback: fetch username by ID
+        supabase
+          .from("profiles")
+          .select("username")
+          .eq("id", notif.from_user_id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.username) navigate(`/profile/${data.username}`);
+          });
+      }
     } else if (notif.type === "new_message" && notif.from_user_id) {
       navigate(`/chat/${notif.from_user_id}`);
     } else if (notif.type === "stream_request" && notif.from_user_id) {

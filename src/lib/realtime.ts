@@ -6,6 +6,8 @@ class RealtimeService {
   private signalingChannel: RealtimeChannel | null = null;
   private notificationChannel: RealtimeChannel | null = null;
   private messageChannel: RealtimeChannel | null = null;
+  private currentSignalingRoomId: string | null = null;
+  private signalingReady = false;
 
   // Track online presence
   trackPresence(userId: string) {
@@ -53,34 +55,107 @@ class RealtimeService {
   }
 
   // Room-based WebRTC signaling
-  joinSignalingRoom(roomId: string, userId: string) {
-    this.leaveSignalingRoom();
+  joinSignalingRoom(roomId: string, userId: string): Promise<void> {
+    // If we're already in this exact room and the channel is ready, don't re-join
+    if (
+      this.currentSignalingRoomId === roomId &&
+      this.signalingChannel &&
+      this.signalingReady
+    ) {
+      console.log(
+        "[Realtime] Already in signaling room",
+        roomId,
+        "— skipping re-join",
+      );
+      return Promise.resolve();
+    }
+
+    // If joining a different room, clean up the old one
+    if (this.signalingChannel) {
+      console.log(
+        "[Realtime] Leaving old signaling room",
+        this.currentSignalingRoomId,
+      );
+      this.signalingChannel.unsubscribe();
+      this.signalingChannel = null;
+    }
+    // NOTE: Do NOT clear onSignalCallbacks here — they're managed by FriendStream
+
+    this.currentSignalingRoomId = roomId;
+    this.signalingReady = false;
+
     this.signalingChannel = supabase.channel(`signal-${roomId}`, {
       config: { broadcast: { self: false } },
     });
 
-    this.signalingChannel
-      .on("broadcast", { event: "signal" }, (payload) => {
-        if (payload.payload.fromUserId !== userId) {
-          this.onSignalCallbacks.forEach((cb) =>
-            cb(payload.payload.fromUserId, payload.payload.signal),
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        console.error("[Realtime] Signaling room subscribe timeout after 10s");
+        reject(new Error("Signaling room subscribe timeout"));
+      }, 10_000);
+
+      this.signalingChannel
+        ?.on("broadcast", { event: "signal" }, (payload) => {
+          const fromUserId = payload.payload.fromUserId;
+          const signal = payload.payload.signal;
+          if (fromUserId !== userId) {
+            console.log(
+              "[Realtime] Received signal:",
+              (signal as Record<string, unknown>).type,
+              "from",
+              fromUserId.slice(0, 8),
+            );
+            this.onSignalCallbacks.forEach((cb) => cb(fromUserId, signal));
+          }
+        })
+        .subscribe((status) => {
+          console.log(
+            "[Realtime] Signaling channel status:",
+            status,
+            "room:",
+            roomId,
           );
-        }
-      })
-      .subscribe();
+          if (status === "SUBSCRIBED") {
+            this.signalingReady = true;
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+    });
   }
 
   leaveSignalingRoom() {
     if (this.signalingChannel) {
+      console.log(
+        "[Realtime] Leaving signaling room",
+        this.currentSignalingRoomId,
+      );
       this.signalingChannel.unsubscribe();
       this.signalingChannel = null;
     }
+    this.currentSignalingRoomId = null;
+    this.signalingReady = false;
     // Clear stale callbacks so they don't accumulate across calls
     this.onSignalCallbacks = [];
   }
 
   sendSignal(targetUserId: string, fromUserId: string, signal: unknown) {
-    this.signalingChannel?.send({
+    if (!this.signalingChannel || !this.signalingReady) {
+      console.warn(
+        "[Realtime] sendSignal called but channel not ready! ready:",
+        this.signalingReady,
+        "channel:",
+        !!this.signalingChannel,
+      );
+      return;
+    }
+    console.log(
+      "[Realtime] Sending signal:",
+      (signal as Record<string, unknown>).type,
+      "to",
+      targetUserId.slice(0, 8),
+    );
+    this.signalingChannel.send({
       type: "broadcast",
       event: "signal",
       payload: { targetUserId, fromUserId, signal },
