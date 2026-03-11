@@ -46,6 +46,9 @@ import TermsOfService from "./pages/TermsOfService";
 import CommunityGuidelines from "./pages/CommunityGuidelines";
 import CookiePolicy from "./pages/CookiePolicy";
 import Checkout from "./pages/Checkout";
+import GiftShop from "./pages/GiftShop";
+import GiftHistory from "./pages/GiftHistory";
+import GiftLeaderboard from "./pages/GiftLeaderboard";
 
 const queryClient = new QueryClient();
 
@@ -247,6 +250,30 @@ const AppInner = () => {
           element={
             <ProtectedRoute>
               <Checkout />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gifts/shop"
+          element={
+            <ProtectedRoute>
+              <GiftShop />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gifts/history"
+          element={
+            <ProtectedRoute>
+              <GiftHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gifts/leaderboard"
+          element={
+            <ProtectedRoute>
+              <GiftLeaderboard />
             </ProtectedRoute>
           }
         />

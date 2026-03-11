@@ -44,6 +44,30 @@ const sections = [
 **Content Moderation:** We employ automated systems to detect potential violations. If a user is reported, relevant information may be reviewed by our safety team.`,
   },
   {
+    title: "Call History Data",
+    content: `**What we collect:** Call participants, call duration, call type (random/friend/group), start and end times, end reason, connection quality metrics, call ratings, and gift transactions during calls.
+
+**What we do NOT collect:** We do NOT record audio or video content of calls. All calls are peer-to-peer encrypted via WebRTC (DTLS/SRTP). No biometric or facial recognition data is collected or stored.
+
+**Why:** To provide the call history feature, improve matching quality, ensure platform safety (correlate reports with call records), and provide usage analytics to users.
+
+**Retention:** Call history metadata is retained for up to **2 years**. Users can hide individual call records from their history view. All call history is permanently deleted upon account deletion.
+
+**Face detection:** Processed entirely on-device. No facial images or biometric data is transmitted to or stored on our servers.`,
+  },
+  {
+    title: "Virtual Currency & Transaction Data",
+    content: `**What we collect:** Coin purchase amounts, payment method details (last 4 digits only, via Stripe), gift transaction history (gift type, recipient, timestamp, context), wallet balances, and diamond earnings.
+
+**Why:** To process transactions, prevent fraud, provide gift history to users, maintain leaderboards, and comply with financial regulations.
+
+**Retention:** Transaction records are retained for **7 years** for financial and legal compliance purposes. Anonymized aggregate data may be retained indefinitely.
+
+**Third-party sharing:** Payment processing is handled by **Stripe**. We share necessary transaction data with Stripe; we do not store full credit card numbers. Refer to Stripe's Privacy Policy for details.
+
+**Your rights:** You can request an export of your full transaction history. Account deletion anonymizes transaction records but aggregate financial data is retained for compliance. You cannot request deletion of specific financial transaction records within the 7-year retention period.`,
+  },
+  {
     title: "Information Sharing",
     content: `We do **not** sell your personal data to third parties. We may share information with:
 
@@ -81,6 +105,8 @@ To exercise any of these rights, visit your Settings page or contact us at priva
 • **Preference Cookies:** Remember your settings and preferences
 • **Analytics Cookies:** Google Analytics to understand usage patterns
 • **Advertising Cookies:** Google AdSense for serving relevant advertisements
+
+We also use **local storage** to cache gift catalog data and animation assets for performance, reducing load times.
 
 You can manage cookie preferences through our cookie consent banner or your browser settings. See our [Cookie Policy](/cookie-policy) for more details.`,
   },

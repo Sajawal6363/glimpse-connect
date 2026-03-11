@@ -336,3 +336,69 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* =============================================
+   GIFT SYSTEM ANIMATIONS
+   ============================================= */
+
+/* Rarity color variables */
+.gift-common { --gift-color: 210, 100%, 70%; }
+.gift-rare   { --gift-color: 190, 100%, 60%; }
+.gift-epic   { --gift-color: 280, 80%, 65%; }
+.gift-legendary { --gift-color: 45, 100%, 55%; }
+
+/* Rarity glow box */
+.gift-glow {
+  box-shadow:
+    0 0 15px hsla(var(--gift-color), 0.4),
+    0 0 30px hsla(var(--gift-color), 0.2),
+    0 0 45px hsla(var(--gift-color), 0.1);
+  animation: gift-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gift-pulse {
+  0%, 100% { box-shadow: 0 0 15px hsla(var(--gift-color), 0.4); }
+  50%       { box-shadow: 0 0 25px hsla(var(--gift-color), 0.6), 0 0 50px hsla(var(--gift-color), 0.3); }
+}
+
+@keyframes gift-float {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-400px) rotate(15deg); opacity: 0; }
+}
+
+@keyframes gift-burst {
+  0%   { transform: scale(0); opacity: 0; }
+  30%  { transform: scale(1.3); opacity: 1; }
+  60%  { transform: scale(1); }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+@keyframes gift-shockwave {
+  0%   { transform: scale(0); opacity: 0.8; border-width: 4px; }
+  100% { transform: scale(4); opacity: 0; border-width: 1px; }
+}
+
+@keyframes gift-combo-pulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.3); text-shadow: 0 0 20px currentColor; }
+  100% { transform: scale(1); }
+}
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(-100vh) rotate(0deg); }
+  100% { transform: translateY(100vh) rotate(720deg); }
+}
+
+@keyframes legendary-flash {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
+/* Neon sender name text */
+.gift-sender-text {
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  text-shadow:
+    0 0 10px hsla(var(--gift-color), 0.8),
+    0 0 20px hsla(var(--gift-color), 0.5),
+    0 0 40px hsla(var(--gift-color), 0.3);
+}

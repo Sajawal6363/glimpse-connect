@@ -1,10 +1,11 @@
 import { useEffect } from "react";
-import { Bell, Search, Wifi, PanelLeftClose, PanelLeft } from "lucide-react";
+import { Bell, Search, Wifi, PanelLeftClose, PanelLeft, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
+import { useGiftStore } from "@/stores/useGiftStore";
 import { getInitials } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useSignedUrl } from "@/lib/storage";
@@ -12,11 +13,15 @@ import { useSignedUrl } from "@/lib/storage";
 const Navbar = () => {
   const { user } = useAuthStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
+  const { wallet, fetchWallet } = useGiftStore();
   const { toggleSidebar, state: sidebarState } = useSidebar();
 
   useEffect(() => {
-    if (user) fetchNotifications(user.id);
-  }, [user, fetchNotifications]);
+    if (user) {
+      fetchNotifications(user.id);
+      fetchWallet(user.id);
+    }
+  }, [user, fetchNotifications, fetchWallet]);
 
   const displayName = user?.name || user?.username || "U";
   const { url: avatarUrl } = useSignedUrl(user?.avatar_url);
@@ -48,6 +53,15 @@ const Navbar = () => {
       </div>
 
       <div className="flex items-center gap-2">
+        {wallet !== null && (
+          <Link
+            to="/gifts/shop"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 glass rounded-full border border-yellow-400/30 hover:border-yellow-400/60 transition-colors"
+          >
+            <Coins className="w-3.5 h-3.5 text-yellow-400" />
+            <span className="text-xs font-bold text-yellow-400">{wallet.coins.toLocaleString()}</span>
+          </Link>
+        )}
         <Button
           variant="ghost"
           size="icon"

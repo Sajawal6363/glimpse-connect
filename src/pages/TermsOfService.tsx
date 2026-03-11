@@ -57,11 +57,53 @@ const sections = [
 • Background content must also comply with our guidelines`,
   },
   {
+    title: "5A. Call Recording & History",
+    content: `ConnectLive logs call metadata (duration, participants, timestamps, connection quality) for service improvement and safety.
+
+• Video/audio content is **NOT recorded or stored** by ConnectLive; all calls are peer-to-peer encrypted via WebRTC (DTLS/SRTP)
+• Users may **NOT** record other users' video or audio without explicit consent
+• Call history metadata is stored for up to **2 years** and can be hidden or deleted by the user from their History view
+• Gift transactions during calls are logged and visible to both sender and receiver
+• Call ratings are used to improve matching quality
+• ConnectLive may use anonymized, aggregated call metadata for analytics and service improvement
+• Face detection runs entirely on the user's device — no biometric data is transmitted to our servers`,
+  },
+  {
     title: "6. Content Ownership",
     content: `• You retain ownership of content you create and share on ConnectLive
 • By using the platform, you grant ConnectLive a non-exclusive, worldwide, royalty-free license to display, distribute, and store your content as necessary to operate the service
 • You represent that you have the right to share any content you upload
 • ConnectLive does not claim ownership of user-generated content`,
+  },
+  {
+    title: "6A. Virtual Currency & Gifts (ConnectCoins)",
+    content: `ConnectLive offers a virtual currency system called **ConnectCoins** (💰) and a Diamonds (💎) reward system.
+
+**Coins:**
+• ConnectCoins are a virtual currency with **no real-world monetary value** outside of ConnectLive
+• Coins are **non-transferable** between users and **non-refundable** (except as required by law)
+• Coins expire after **12 months** of account inactivity
+• ConnectLive reserves the right to modify coin pricing, gift costs, and gift availability at any time
+• Purchases are final; no refunds for used coins
+• Unused coins may be requested for refund within **14 days** of purchase (EU consumers: 14-day statutory cooling-off period applies)
+• All prices are in USD unless otherwise stated; applicable taxes may apply
+• In-app purchases are processed through third-party payment providers (Stripe); ConnectLive is not responsible for payment processing errors
+
+**Diamonds:**
+• Diamonds are earned when you receive gifts (1 diamond = 1 coin value of gift received)
+• Diamonds are for **status display purposes only** and have no monetary value
+• Diamonds cannot be cashed out or exchanged for real money
+
+**Gifts:**
+• Gifts are cosmetic features that trigger visual animations; they do not confer additional platform privileges
+• ConnectLive is not responsible for gifts sent to unintended recipients
+• Gift animations are subject to change without notice
+
+**Prohibited Conduct:**
+• Users may not sell, trade, or transfer virtual items for real money
+• Any attempt to manipulate the gifting system (bots, fraud, self-gifting via alt accounts) results in **permanent ban** and forfeiture of all virtual currency
+• Gifting to solicit inappropriate behavior, explicit content, or as payment for services is a Terms violation resulting in permanent ban
+• ConnectLive reserves the right to revoke virtual currency in cases of fraud or abuse`,
   },
   {
     title: "7. Moderation & Enforcement",
@@ -72,7 +114,12 @@ const sections = [
 
 Severe violations (CSAM, threats of violence, etc.) result in **immediate permanent ban** and may be reported to law enforcement.
 
-We use a combination of AI-assisted moderation, user reports, and manual review to enforce our guidelines. We reserve the right to remove any content or terminate any account that violates these terms.`,
+We use a combination of AI-assisted moderation, user reports, and manual review to enforce our guidelines. We reserve the right to remove any content or terminate any account that violates these terms.
+
+**Gifting-related violations:**
+• Misuse of the gifting system (gifting to manipulate, as payment for explicit content, or for any unlawful purpose) is a Terms violation
+• Users sending gifts to solicit inappropriate behavior will be permanently banned
+• Virtual currency associated with a banned account is forfeited`,
   },
   {
     title: "8. Intellectual Property",

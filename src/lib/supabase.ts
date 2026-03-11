@@ -132,6 +132,100 @@ export interface StreamSession {
   duration: number | null;
   was_skipped: boolean;
   was_reported: boolean;
+  call_type: 'random' | 'friend' | 'group';
+  group_id: string | null;
+  initiator_id: string | null;
+  end_reason: 'normal' | 'skipped' | 'reported' | 'disconnected' | 'declined' | 'missed' | 'timeout';
+  user1_followed_user2: boolean;
+  user2_followed_user1: boolean;
+  gifts_sent_count: number;
+  gifts_received_count: number;
+  gifts_value_sent: number;
+  gifts_value_received: number;
+  connection_quality: 'good' | 'fair' | 'poor';
+  user1_rating: number | null;
+  user2_rating: number | null;
+  other_user?: Profile;
+  group?: Group;
+}
+
+export interface CallParticipant {
+  id: string;
+  session_id: string;
+  user_id: string;
+  joined_at: string;
+  left_at: string | null;
+  duration: number;
+  profile?: Profile;
+}
+
+export interface UserWallet {
+  user_id: string;
+  coins: number;
+  diamonds: number;
+  total_coins_purchased: number;
+  total_coins_spent: number;
+  total_diamonds_earned: number;
+  total_gifts_sent: number;
+  total_gifts_received: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Gift {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  emoji: string;
+  coin_cost: number;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  animation_type: 'float' | 'burst' | 'fullscreen' | 'premium';
+  animation_duration: number;
+  sort_order: number;
+  is_active: boolean;
+  is_premium_only: boolean;
+}
+
+export interface GiftTransaction {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  gift_id: string;
+  gift_name: string;
+  gift_emoji: string;
+  coin_cost: number;
+  diamond_value: number;
+  context: 'stream_random' | 'stream_friend' | 'stream_group' | 'chat' | 'profile';
+  session_id: string | null;
+  group_id: string | null;
+  created_at: string;
+  sender?: Profile;
+  receiver?: Profile;
+}
+
+export interface CoinTransaction {
+  id: string;
+  user_id: string;
+  type: 'purchase' | 'gift_sent' | 'gift_received' | 'refund' | 'bonus' | 'admin';
+  amount: number;
+  balance_after: number;
+  description: string;
+  reference_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface GiftLeaderboardEntry {
+  user_id: string;
+  total_sent_value: number;
+  total_received_value: number;
+  total_gifts_sent: number;
+  total_gifts_received: number;
+  weekly_sent_value: number;
+  weekly_received_value: number;
+  rank_position: number;
+  profile?: Profile;
 }
 
 export interface ContactMessage {

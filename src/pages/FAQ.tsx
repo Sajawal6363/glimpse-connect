@@ -129,6 +129,68 @@ const categories = [
     ],
   },
   {
+    title: "Gifts & ConnectCoins",
+    faqs: [
+      {
+        q: "What are ConnectCoins?",
+        a: "ConnectCoins (💰) are ConnectLive's virtual currency used to purchase and send gifts to other users during live calls, in chat, or on profiles. They can be purchased in the Gift Shop from the sidebar.",
+      },
+      {
+        q: "How do I buy ConnectCoins?",
+        a: "Go to Gift Shop from the sidebar or tap the 💰 balance indicator in the top navbar. Select a coin package (Starter at $0.99 up to Whale at $99.99) and complete your purchase via our secure payment system.",
+      },
+      {
+        q: "How do I send a gift during a call?",
+        a: "During any live call (random, friend, or group), tap the 🎁 gift button in the call controls bar. A gift tray slides up showing all available gifts organized by rarity. Select a gift you can afford and tap Send.",
+      },
+      {
+        q: "What are Diamonds?",
+        a: "Diamonds (💎) are earned when you receive gifts. Every 1 coin of gift value you receive = 1 diamond earned. Diamonds represent your social status on ConnectLive and appear on your profile. They currently cannot be converted to cash.",
+      },
+      {
+        q: "What's the difference between gift rarities?",
+        a: "Common gifts (1–49 coins) play a simple float animation. Rare gifts (50–199 coins) trigger a burst effect with particles. Epic gifts (200–999 coins) take over the full screen with themed animations. Legendary gifts (1,000+ coins) play a cinematic 6–10 second premium animation for both users.",
+      },
+      {
+        q: "Can I refund purchased coins?",
+        a: "Unused coins may be refunded within 14 days of purchase. Once coins have been used to send gifts, they are non-refundable. EU consumers have a 14-day statutory cooling-off period. Contact support@connectlive.com for refund requests.",
+      },
+      {
+        q: "Can I transfer coins to another user?",
+        a: "No. ConnectCoins can only be used to send gifts — they cannot be directly transferred between users. Attempting to sell or trade virtual currency violates our Terms of Service.",
+      },
+      {
+        q: "What happens to my coins if I delete my account?",
+        a: "All virtual currency (coins and diamonds) is permanently forfeited upon account deletion. Please spend or use your coins before deleting your account.",
+      },
+    ],
+  },
+  {
+    title: "Call History",
+    faqs: [
+      {
+        q: "Where can I see my call history?",
+        a: "Go to History in the sidebar (clock icon). You'll see all calls that lasted 30 seconds or more, including random stranger calls, friend calls, and group calls, with duration, gifts exchanged, and connection quality.",
+      },
+      {
+        q: "Are my video calls recorded?",
+        a: "No. All video and audio is transmitted peer-to-peer via WebRTC (DTLS/SRTP encrypted). ConnectLive only stores call metadata (duration, participants, timestamps) — never the actual audio or video content.",
+      },
+      {
+        q: "Why do some calls not appear in my history?",
+        a: "Calls shorter than 30 seconds are automatically excluded from your history. Only meaningful conversations are saved.",
+      },
+      {
+        q: "Can I rate a call after it ends?",
+        a: "Yes! A rating card appears after each call ends. You can rate 1–5 stars. Ratings are anonymous and help us improve our matching algorithm.",
+      },
+      {
+        q: "How long is call history kept?",
+        a: "Call metadata is retained for up to 2 years. You can hide individual sessions from your history view. All history is permanently deleted when you delete your account.",
+      },
+    ],
+  },
+  {
     title: "Technical",
     faqs: [
       {
