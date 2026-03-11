@@ -181,8 +181,8 @@ const FloatingPhoto = ({
   photo: (typeof floatingPhotos)[0];
   pos: (typeof photoPositions)[0];
   index: number;
-  mouseX: ReturnType<typeof useMotionValue>;
-  mouseY: ReturnType<typeof useMotionValue>;
+  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
 }) => {
   const depth = 0.5 + (index % 4) * 0.15;
   const parallaxX = useTransform(mouseX, [0, 1], [-12 * depth, 12 * depth]);
