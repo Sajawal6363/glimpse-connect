@@ -21,6 +21,11 @@ import {
   X,
   Camera,
   Loader2,
+  Sparkles,
+  Star,
+  Shield,
+  Zap,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,11 +42,13 @@ import {
   supabase,
   type Profile as ProfileType,
   type GalleryImage,
+  type ProfileRatingSummary as ProfileRatingSummaryType,
 } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials } from "@/lib/utils";
 import PrivateImage from "@/components/PrivateImage";
 import AppLayout from "@/components/layout/AppLayout";
+import { getAuraCaption, getAuraLabel } from "@/lib/streamRatings";
 
 const MAX_GALLERY_IMAGES = 5;
 
@@ -76,6 +83,8 @@ const Profile = () => {
   const [followingCount, setFollowingCount] = useState(0);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [ratingSummary, setRatingSummary] =
+    useState<ProfileRatingSummaryType | null>(null);
 
   // Gallery state
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
@@ -169,6 +178,14 @@ const Profile = () => {
       }
 
       // Fetch gallery
+      const { data: ratingData } = await supabase
+        .from("profile_rating_summary")
+        .select("*")
+        .eq("user_id", targetProfile.id)
+        .maybeSingle();
+
+      setRatingSummary((ratingData as ProfileRatingSummaryType | null) || null);
+
       await fetchGallery(targetProfile.id, isOwn);
 
       setIsLoading(false);
@@ -590,7 +607,7 @@ const Profile = () => {
           </div>
 
           {/* Info */}
-          <div className="relative z-10 px-8 pb-8">
+          <div className="relative z-10 px-4 sm:px-8 pb-8">
             <div className="flex items-center justify-center gap-2 mb-1">
               <h1 className="text-2xl font-bold text-foreground">
                 {profile.name}
@@ -628,6 +645,136 @@ const Profile = () => {
                 <div className="text-xs text-muted-foreground">Following</div>
               </div>
             </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.04 }}
+              className="relative mb-6 overflow-hidden rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/10 via-background/80 to-secondary/10 p-4 sm:p-5 text-left"
+            >
+              <div className="absolute -right-10 top-0 h-28 w-28 rounded-full bg-primary/10 blur-3xl" />
+              <div className="absolute -left-8 bottom-0 h-24 w-24 rounded-full bg-secondary/10 blur-3xl" />
+
+              <div className="relative grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-primary/80">
+                      Vibeprint
+                    </p>
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground">
+                    {ratingSummary?.rating_count
+                      ? getAuraLabel(ratingSummary.aura_score)
+                      : "No public vibeprint yet"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xl leading-relaxed break-words">
+                    {ratingSummary?.rating_count
+                      ? getAuraCaption(ratingSummary.aura_score)
+                      : isOwnProfile
+                        ? "Longer live streams unlock your first public Vibeprint. Once people rate you, this card becomes your signature reputation layer."
+                        : "This profile has not collected enough live-stream ratings yet."}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
+                      Live reputation
+                    </div>
+                    <div className="rounded-full border border-border/40 bg-background/50 px-3 py-1 text-[11px] font-medium text-muted-foreground">
+                      Built from real stream sessions
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full rounded-3xl border border-white/10 bg-background/70 px-4 py-4 backdrop-blur-sm shadow-[0_18px_50px_rgba(0,0,0,0.16)] lg:justify-self-end">
+                  <div className="flex items-center gap-2 text-primary mb-1">
+                    <Star className="w-4 h-4 fill-current" />
+                    <span className="text-xs uppercase tracking-[0.22em]">
+                      Aura Score
+                    </span>
+                  </div>
+                  <div className="text-3xl sm:text-4xl font-black text-foreground leading-none">
+                    {ratingSummary?.rating_count
+                      ? ratingSummary.aura_score.toFixed(1)
+                      : "--"}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {ratingSummary?.rating_count
+                      ? `${ratingSummary.rating_count.toLocaleString()} verified stream ratings`
+                      : "Waiting for first verified rating"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  {
+                    label: "Vibe",
+                    value: ratingSummary?.vibe_score ?? 0,
+                    accent: "from-primary to-secondary",
+                    Icon: Sparkles,
+                    suffix: "/5",
+                  },
+                  {
+                    label: "Respect",
+                    value: ratingSummary?.respect_score ?? 0,
+                    accent: "from-emerald-400 to-cyan-400",
+                    Icon: Shield,
+                    suffix: "/5",
+                  },
+                  {
+                    label: "Energy",
+                    value: ratingSummary?.energy_score ?? 0,
+                    accent: "from-orange-400 to-rose-400",
+                    Icon: Zap,
+                    suffix: "/5",
+                  },
+                  {
+                    label: "Reconnect",
+                    value: ratingSummary?.reconnect_rate ?? 0,
+                    accent: "from-violet-400 to-fuchsia-400",
+                    Icon: RefreshCw,
+                    suffix: "%",
+                    max: 100,
+                  },
+                ].map((metric) => {
+                  const max = metric.max ?? 5;
+                  const width = Math.max(
+                    0,
+                    Math.min(100, (metric.value / max) * 100),
+                  );
+
+                  return (
+                    <div
+                      key={metric.label}
+                      className="min-w-0 rounded-2xl border border-border/40 bg-background/50 p-4"
+                    >
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <div className="flex min-w-0 items-center gap-2 text-foreground">
+                          <metric.Icon className="w-4 h-4 text-primary" />
+                          <span className="truncate text-sm font-semibold">
+                            {metric.label}
+                          </span>
+                        </div>
+                        <span className="shrink-0 text-sm font-bold text-foreground">
+                          {ratingSummary?.rating_count
+                            ? `${metric.value.toFixed(metric.suffix === "%" ? 0 : 1)}${metric.suffix}`
+                            : "--"}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${metric.accent}`}
+                          style={{
+                            width: `${ratingSummary?.rating_count ? width : 0}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
 
             {/* Actions */}
             <div className="flex items-center justify-center gap-3 mb-8">

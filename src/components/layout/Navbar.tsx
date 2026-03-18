@@ -1,11 +1,5 @@
 import { useEffect } from "react";
-import {
-  Bell,
-  Search,
-  Wifi,
-  PanelLeftClose,
-  PanelLeft,
-} from "lucide-react";
+import { Bell, Search, Wifi, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

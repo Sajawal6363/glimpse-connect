@@ -152,6 +152,30 @@ export interface StreamSession {
   group?: Group;
 }
 
+export interface StreamRating {
+  id: string;
+  session_id: string;
+  rater_id: string;
+  rated_user_id: string;
+  overall_rating: number;
+  vibe_rating: number;
+  respect_rating: number;
+  energy_rating: number;
+  would_reconnect: boolean;
+  created_at: string;
+}
+
+export interface ProfileRatingSummary {
+  user_id: string;
+  rating_count: number;
+  aura_score: number;
+  vibe_score: number;
+  respect_score: number;
+  energy_score: number;
+  reconnect_rate: number;
+  last_rated_at: string | null;
+}
+
 export interface CallParticipant {
   id: string;
   session_id: string;

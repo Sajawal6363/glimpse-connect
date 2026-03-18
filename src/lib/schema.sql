@@ -108,6 +108,21 @@ CREATE TABLE public.stream_sessions (
   was_reported BOOLEAN DEFAULT FALSE
 );
 
+CREATE TABLE public.stream_ratings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id UUID REFERENCES public.stream_sessions(id) ON DELETE CASCADE NOT NULL,
+  rater_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  rated_user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+  overall_rating SMALLINT NOT NULL CHECK (overall_rating BETWEEN 1 AND 5),
+  vibe_rating SMALLINT NOT NULL CHECK (vibe_rating BETWEEN 1 AND 5),
+  respect_rating SMALLINT NOT NULL CHECK (respect_rating BETWEEN 1 AND 5),
+  energy_rating SMALLINT NOT NULL CHECK (energy_rating BETWEEN 1 AND 5),
+  would_reconnect BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(session_id, rater_id, rated_user_id),
+  CHECK (rater_id <> rated_user_id)
+);
+
 -- Contact Messages
 CREATE TABLE public.contact_messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -131,6 +146,7 @@ CREATE INDEX idx_notifications_user ON public.notifications(user_id, is_read);
 CREATE INDEX idx_profiles_country ON public.profiles(country);
 CREATE INDEX idx_profiles_online ON public.profiles(is_online);
 CREATE INDEX idx_profiles_username ON public.profiles(username);
+CREATE INDEX idx_stream_ratings_rated_user ON public.stream_ratings(rated_user_id, created_at DESC);
 
 -- =============================================
 -- Enable Realtime
@@ -149,6 +165,7 @@ ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.blocks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stream_ratings ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
@@ -168,6 +185,22 @@ CREATE POLICY "Users can update their notifications" ON public.notifications FOR
 CREATE POLICY "System can create notifications" ON public.notifications FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Users can manage their settings" ON public.user_settings FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Anyone can view stream ratings" ON public.stream_ratings FOR SELECT USING (true);
+CREATE POLICY "Users can insert stream ratings for completed calls" ON public.stream_ratings FOR INSERT WITH CHECK (
+  auth.uid() = rater_id
+  AND EXISTS (
+    SELECT 1 FROM public.stream_sessions session
+    WHERE session.id = session_id
+      AND session.ended_at IS NOT NULL
+      AND COALESCE(session.duration, 0) >= 30
+      AND (
+        (session.user1_id = rater_id AND session.user2_id = rated_user_id)
+        OR (session.user2_id = rater_id AND session.user1_id = rated_user_id)
+      )
+  )
+);
+CREATE POLICY "Users can update their own stream ratings" ON public.stream_ratings FOR UPDATE USING (auth.uid() = rater_id) WITH CHECK (auth.uid() = rater_id);
 
 CREATE POLICY "Users can create reports" ON public.reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
 CREATE POLICY "Users can view own reports" ON public.reports FOR SELECT USING (auth.uid() = reporter_id);

@@ -25,6 +25,12 @@ import {
   Wifi,
   Search,
   Shield,
+  Smile,
+  Heart,
+  Sparkles,
+  Flame,
+  Star,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +57,14 @@ import InterstitialAd from "@/components/ads/InterstitialAd";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
 import { supabase, type Profile } from "@/lib/supabase";
+import { floatingPhotoAvatars } from "@/lib/floatingPhotos";
+import {
+  STREAM_RATING_DIMENSIONS,
+  STREAM_RATING_MIN_DURATION,
+  createDefaultStreamRatingForm,
+  getAuraLabel,
+  type StreamRatingForm,
+} from "@/lib/streamRatings";
 import { useSocialStore } from "@/stores/useSocialStore";
 
 /* ─── Typewriter Search Text ─── */
@@ -80,14 +94,92 @@ const SearchingText = () => {
 };
 
 type StreamState = "idle" | "searching" | "connecting" | "connected";
+type ReactionKind = "smile" | "love" | "spark" | "fire";
+type ReactionSide = "local" | "remote";
+type ReactionOption = {
+  kind: ReactionKind;
+  label: string;
+  Icon: LucideIcon;
+  buttonClassName: string;
+  burstClassName: string;
+  iconClassName: string;
+  glowColor: string;
+};
 
 /* ─── Constants ─── */
 const MAX_CALL_DURATION = 60 * 60; // 1 hour per stranger
 const STUN_URL =
   import.meta.env.VITE_STUN_URL || "stun:stun.l.google.com:19302";
+type ReactionBubble = {
+  id: string;
+  reaction: ReactionKind;
+  side: ReactionSide;
+  xOffset: number;
+  yOffset: number;
+  size: number;
+  delay: number;
+  rotate: number;
+};
+type ReactionHighlight = {
+  id: string;
+  reaction: ReactionKind;
+  side: ReactionSide;
+};
+type RatingPromptState = {
+  sessionId: string;
+  targetUser: Profile;
+  durationSeconds: number;
+  nextAction: "idle" | "searching";
+};
 const TURN_URL = import.meta.env.VITE_TURN_URL || "";
 const TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME || "";
 const TURN_PASSWORD = import.meta.env.VITE_TURN_PASSWORD || "";
+const REACTION_OPTIONS: ReactionOption[] = [
+  {
+    kind: "smile",
+    label: "Happy",
+    Icon: Smile,
+    buttonClassName:
+      "border-amber-400/20 bg-amber-500/10 hover:bg-amber-500/20 hover:border-amber-300/30",
+    burstClassName: "from-amber-400/95 via-orange-400/90 to-yellow-300/90",
+    iconClassName: "text-white",
+    glowColor: "rgba(251, 191, 36, 0.45)",
+  },
+  {
+    kind: "love",
+    label: "Love",
+    Icon: Heart,
+    buttonClassName:
+      "border-rose-400/20 bg-rose-500/10 hover:bg-rose-500/20 hover:border-rose-300/30",
+    burstClassName: "from-rose-500/95 via-pink-500/90 to-fuchsia-400/90",
+    iconClassName: "text-white",
+    glowColor: "rgba(244, 63, 94, 0.5)",
+  },
+  {
+    kind: "spark",
+    label: "Celebrate",
+    Icon: Sparkles,
+    buttonClassName:
+      "border-violet-400/20 bg-violet-500/10 hover:bg-violet-500/20 hover:border-violet-300/30",
+    burstClassName: "from-violet-500/95 via-fuchsia-500/90 to-cyan-400/90",
+    iconClassName: "text-white",
+    glowColor: "rgba(168, 85, 247, 0.5)",
+  },
+  {
+    kind: "fire",
+    label: "Fire",
+    Icon: Flame,
+    buttonClassName:
+      "border-orange-400/20 bg-orange-500/10 hover:bg-orange-500/20 hover:border-orange-300/30",
+    burstClassName: "from-orange-500/95 via-red-500/90 to-amber-400/90",
+    iconClassName: "text-white",
+    glowColor: "rgba(249, 115, 22, 0.5)",
+  },
+];
+
+const getReactionOption = (reaction: ReactionKind) =>
+  REACTION_OPTIONS.find((option) => option.kind === reaction) ??
+  REACTION_OPTIONS[0];
 
 const getIceServers = (): RTCIceServer[] => {
   const servers: RTCIceServer[] = [
@@ -159,6 +251,19 @@ const Stream = () => {
   >("good");
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [remainingTime, setRemainingTime] = useState(MAX_CALL_DURATION);
+  const [previewAvatars] = useState(floatingPhotoAvatars);
+  const [reactionBursts, setReactionBursts] = useState<ReactionBubble[]>([]);
+  const [reactionHighlights, setReactionHighlights] = useState<
+    ReactionHighlight[]
+  >([]);
+  const [ratingPrompt, setRatingPrompt] = useState<RatingPromptState | null>(
+    null,
+  );
+  const [ratingForm, setRatingForm] = useState<StreamRatingForm>(
+    createDefaultStreamRatingForm,
+  );
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [resumeSearchAfterRating, setResumeSearchAfterRating] = useState(false);
 
   /* ─── Follow system ─── */
   const {
@@ -214,6 +319,8 @@ const Stream = () => {
   const offerRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const offerSentRef = useRef(false);
   const chatOpenRef = useRef(false);
+  const reactionTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const suppressNextRatingPromptRef = useRef(false);
 
   // Keep stateRef in sync
   useEffect(() => {
@@ -230,6 +337,111 @@ const Stream = () => {
 
   const isCallActive =
     state === "searching" || state === "connecting" || state === "connected";
+
+  const clearReactionTimeouts = useCallback(() => {
+    reactionTimeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    reactionTimeoutsRef.current = [];
+  }, []);
+
+  const clearReactionBursts = useCallback(() => {
+    clearReactionTimeouts();
+    setReactionBursts([]);
+    setReactionHighlights([]);
+  }, [clearReactionTimeouts]);
+
+  const resetRatingForm = useCallback(() => {
+    setRatingForm(createDefaultStreamRatingForm());
+  }, []);
+
+  const openRatingPrompt = useCallback(
+    (
+      sessionId: string | null,
+      targetUser: Profile | null,
+      durationSeconds: number,
+      nextAction: "idle" | "searching",
+    ) => {
+      const shouldSuppress = suppressNextRatingPromptRef.current;
+      suppressNextRatingPromptRef.current = false;
+
+      if (!sessionId || !targetUser || shouldSuppress) {
+        return false;
+      }
+
+      resetRatingForm();
+      setRatingPrompt({ sessionId, targetUser, durationSeconds, nextAction });
+      return true;
+    },
+    [resetRatingForm],
+  );
+
+  const triggerReactionBurst = useCallback(
+    (reaction: ReactionKind, side: ReactionSide) => {
+      const batchId = `${side}-${reaction}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const particles = Array.from({ length: 12 }, (_, index) => ({
+        id: `${batchId}-${index}`,
+        reaction,
+        side,
+        xOffset: Math.round((Math.random() - 0.5) * 190),
+        yOffset: 220 + Math.round(Math.random() * 140),
+        size: 58 + Math.round(Math.random() * 18),
+        delay: index * 0.04,
+        rotate: Math.round((Math.random() - 0.5) * 36),
+      }));
+      const highlightId = `${batchId}-highlight`;
+
+      setReactionBursts((prev) => [...prev, ...particles]);
+      setReactionHighlights((prev) => [
+        ...prev,
+        { id: highlightId, reaction, side },
+      ]);
+
+      const burstTimeout = setTimeout(() => {
+        setReactionBursts((prev) =>
+          prev.filter((particle) => !particle.id.startsWith(batchId)),
+        );
+        reactionTimeoutsRef.current = reactionTimeoutsRef.current.filter(
+          (entry) => entry !== burstTimeout,
+        );
+      }, 2400);
+
+      const highlightTimeout = setTimeout(() => {
+        setReactionHighlights((prev) =>
+          prev.filter((highlight) => highlight.id !== highlightId),
+        );
+        reactionTimeoutsRef.current = reactionTimeoutsRef.current.filter(
+          (entry) => entry !== highlightTimeout,
+        );
+      }, 1550);
+
+      reactionTimeoutsRef.current.push(burstTimeout, highlightTimeout);
+    },
+    [],
+  );
+
+  const handleSendReaction = useCallback(
+    (reaction: ReactionKind) => {
+      if (
+        state !== "connected" ||
+        !dataChannelRef.current ||
+        dataChannelRef.current.readyState !== "open"
+      ) {
+        return;
+      }
+
+      dataChannelRef.current.send(
+        JSON.stringify({ type: "reaction", reaction }),
+      );
+      triggerReactionBurst(reaction, "local");
+    },
+    [state, triggerReactionBurst],
+  );
+
+  const updateRatingValue = useCallback(
+    (key: keyof StreamRatingForm, value: number | boolean) => {
+      setRatingForm((prev) => ({ ...prev, [key]: value }));
+    },
+    [],
+  );
 
   /* ─── Fetch follow status when matched user changes ─── */
   useEffect(() => {
@@ -290,17 +502,16 @@ const Stream = () => {
   /* ─── Helper to end the session record ─── */
   const endSessionRecord = useCallback(
     async (wasSkipped: boolean, wasReported = false) => {
-      if (!sessionIdRef.current) return;
+      if (!sessionIdRef.current) return null;
       const sid = sessionIdRef.current;
       sessionIdRef.current = null;
       const now = new Date().toISOString();
 
-      // Only keep sessions that lasted ≥30 seconds (meaningful conversations)
-      if (timer < 30) {
+      if (timer < STREAM_RATING_MIN_DURATION) {
         // Delete short sessions — not worth keeping in history
         await supabase.from("stream_sessions").delete().eq("id", sid);
         console.log("[Stream] Session too short, deleted:", sid);
-        return;
+        return null;
       }
 
       await supabase
@@ -313,6 +524,7 @@ const Stream = () => {
         })
         .eq("id", sid);
       console.log("[Stream] Session ended:", sid, "duration:", timer);
+      return sid;
     },
     [timer],
   );
@@ -565,14 +777,16 @@ const Stream = () => {
   }, [stopFaceDetection]);
 
   /* ─── Skip to next stranger (internal) ─── */
-  const handleSkipInternal = useCallback(() => {
+  const handleSkipInternal = useCallback(async () => {
     if (isSkippingRef.current) return;
     isSkippingRef.current = true;
 
     console.log("[Stream] Skipping to next stranger");
 
+    const ratingTarget = matchedUserRef.current;
+
     // End the session record (skipped)
-    endSessionRecord(true);
+    const sessionId = await endSessionRecord(true);
 
     // Send end signal to current peer
     try {
@@ -603,8 +817,22 @@ const Stream = () => {
     setChatMessages([]);
     setChatOpen(false);
     setUnreadChatCount(0);
+    clearReactionBursts();
     setTimer(0);
     setRemainingTime(MAX_CALL_DURATION);
+    const promptedForRating = openRatingPrompt(
+      sessionId,
+      ratingTarget,
+      timer,
+      "searching",
+    );
+
+    if (promptedForRating) {
+      setState("idle");
+      isSkippingRef.current = false;
+      return;
+    }
+
     setState("searching");
 
     // Re-enter queue after a short delay
@@ -648,6 +876,8 @@ const Stream = () => {
     destroyPeer,
     toast,
     endSessionRecord,
+    clearReactionBursts,
+    openRatingPrompt,
   ]);
 
   /* ─── Max call duration timer ─── */
@@ -874,6 +1104,15 @@ const Stream = () => {
               setChatOpen(true);
               setUnreadChatCount((c) => c + 1);
             }
+            return;
+          }
+
+          if (
+            data.type === "reaction" &&
+            typeof data.reaction === "string" &&
+            REACTION_OPTIONS.some((reaction) => reaction.kind === data.reaction)
+          ) {
+            triggerReactionBurst(data.reaction as ReactionKind, "remote");
           }
         } catch {
           /* */
@@ -914,6 +1153,7 @@ const Stream = () => {
       setMatchedUser(matched);
       setChatMessages([]);
       setState("connecting");
+      clearReactionBursts();
 
       const roomId = makeRoomId(user.id, matched.id);
       const initiator = user.id < matched.id;
@@ -1053,22 +1293,78 @@ const Stream = () => {
     matchmakingUnsubsRef.current = [unsub1, unsub2];
   }, [startLocalMedia, user?.id, countryFilter, genderFilter, toast]);
 
+  useEffect(() => {
+    if (!resumeSearchAfterRating || ratingPrompt) return;
+
+    setResumeSearchAfterRating(false);
+    void startSearching();
+  }, [resumeSearchAfterRating, ratingPrompt, startSearching]);
+
+  const finishRatingPrompt = useCallback(() => {
+    if (ratingPrompt?.nextAction === "searching") {
+      setResumeSearchAfterRating(true);
+    }
+    setRatingPrompt(null);
+    setRatingSubmitting(false);
+    resetRatingForm();
+  }, [ratingPrompt, resetRatingForm]);
+
+  const handleSubmitRating = useCallback(async () => {
+    if (!ratingPrompt || !user?.id || ratingSubmitting) return;
+
+    setRatingSubmitting(true);
+    const { error } = await supabase.from("stream_ratings").upsert(
+      {
+        session_id: ratingPrompt.sessionId,
+        rater_id: user.id,
+        rated_user_id: ratingPrompt.targetUser.id,
+        ...ratingForm,
+      },
+      { onConflict: "session_id,rater_id,rated_user_id" },
+    );
+
+    if (error) {
+      setRatingSubmitting(false);
+      toast({
+        title: "Rating could not be saved",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Vibeprint submitted",
+      description: `Your rating is now part of @${ratingPrompt.targetUser.username}'s public profile.`,
+    });
+    finishRatingPrompt();
+  }, [
+    ratingPrompt,
+    user?.id,
+    ratingSubmitting,
+    ratingForm,
+    toast,
+    finishRatingPrompt,
+  ]);
+
   /* ─── User-facing skip ─── */
-  const handleSkip = useCallback(() => {
+  const handleSkip = useCallback(async () => {
     const newCount = skipCount + 1;
     setSkipCount(newCount);
     if (newCount % 5 === 0) {
       setShowInterstitial(true);
     }
-    handleSkipInternal();
+    await handleSkipInternal();
   }, [skipCount, handleSkipInternal]);
 
   /* ─── End streaming completely ─── */
-  const handleEnd = useCallback(() => {
+  const handleEnd = useCallback(async () => {
     console.log("[Stream] Ending stream completely");
 
+    const ratingTarget = matchedUserRef.current;
+
     // End the session record
-    endSessionRecord(false);
+    const sessionId = await endSessionRecord(false);
 
     try {
       realtimeService.sendSignal("", user?.id || "", { type: "end" });
@@ -1095,15 +1391,20 @@ const Stream = () => {
     setChatMessages([]);
     setChatOpen(false);
     setUnreadChatCount(0);
+    clearReactionBursts();
     setTimer(0);
     setRemainingTime(MAX_CALL_DURATION);
     setState("idle");
+    openRatingPrompt(sessionId, ratingTarget, timer, "idle");
   }, [
     user?.id,
     destroyPeer,
     stopLocalMedia,
     stopFaceDetection,
     endSessionRecord,
+    clearReactionBursts,
+    openRatingPrompt,
+    timer,
   ]);
 
   /* ─── Toggle mute ─── */
@@ -1145,6 +1446,7 @@ const Stream = () => {
   /* ─── Report ─── */
   const handleReport = useCallback(async () => {
     if (!reportReason || !user || !matchedUser) return;
+    suppressNextRatingPromptRef.current = true;
     await supabase.from("reports").insert({
       reporter_id: user.id,
       reported_id: matchedUser.id,
@@ -1165,6 +1467,7 @@ const Stream = () => {
   /* ─── Block ─── */
   const handleBlock = useCallback(async () => {
     if (!user || !matchedUser) return;
+    suppressNextRatingPromptRef.current = true;
     await supabase.from("blocks").insert({
       blocker_id: user.id,
       blocked_id: matchedUser.id,
@@ -1279,6 +1582,7 @@ const Stream = () => {
       if (offerRetryRef.current) clearInterval(offerRetryRef.current);
       if (faceCheckIntervalRef.current)
         clearInterval(faceCheckIntervalRef.current);
+      clearReactionTimeouts();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1626,23 +1930,26 @@ const Stream = () => {
                     </motion.div>
                   </div>
 
-                  {/* Floating silhouettes */}
+                  {/* Floating user avatars */}
                   {[0, 1, 2, 3].map((i) => {
                     const angle = i * 90 * (Math.PI / 180);
                     const radius = 75;
+                    const avatar =
+                      previewAvatars[i % Math.max(previewAvatars.length, 1)];
                     return (
                       <motion.div
                         key={`sil-${i}`}
-                        className="absolute w-8 h-8 rounded-full bg-muted/30 border border-border/30 flex items-center justify-center"
+                        className="absolute w-10 h-10 rounded-full border-2 border-primary/40 flex items-center justify-center overflow-hidden shadow-lg"
                         style={{
-                          left: `calc(50% + ${Math.cos(angle) * radius}px - 16px)`,
-                          top: `calc(50% + ${Math.sin(angle) * radius}px - 16px)`,
+                          left: `calc(50% + ${Math.cos(angle) * radius}px - 20px)`,
+                          top: `calc(50% + ${Math.sin(angle) * radius}px - 20px)`,
+                          boxShadow: "0 0 12px hsl(var(--primary) / 0.3)",
                         }}
                         animate={{
                           x: [0, Math.cos(angle + 0.5) * 15, 0],
                           y: [0, Math.sin(angle + 0.5) * 15, 0],
-                          opacity: [0.3, 0.7, 0.3],
-                          scale: [0.8, 1, 0.8],
+                          opacity: [0.4, 0.9, 0.4],
+                          scale: [0.85, 1.05, 0.85],
                         }}
                         transition={{
                           duration: 3 + i * 0.5,
@@ -1651,7 +1958,24 @@ const Stream = () => {
                           delay: i * 0.4,
                         }}
                       >
-                        <Users className="w-4 h-4 text-muted-foreground/50" />
+                        {avatar?.url ? (
+                          <img
+                            src={avatar.url}
+                            alt={avatar.initials}
+                            className="w-full h-full object-cover"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div
+                            className="w-full h-full flex items-center justify-center text-[10px] font-bold text-primary-foreground"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--secondary)))",
+                            }}
+                          >
+                            {avatar?.initials ?? "?"}
+                          </div>
+                        )}
                       </motion.div>
                     );
                   })}
@@ -1993,6 +2317,97 @@ const Stream = () => {
                 )}
               </AnimatePresence>
 
+              <AnimatePresence>
+                {reactionHighlights.map((highlight) => {
+                  const option = getReactionOption(highlight.reaction);
+                  const Icon = option.Icon;
+
+                  return (
+                    <motion.div
+                      key={highlight.id}
+                      initial={{ opacity: 0, y: 18, scale: 0.88 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -18, scale: 0.92 }}
+                      transition={{ duration: 0.45, ease: "easeOut" }}
+                      className="absolute z-20 pointer-events-none"
+                      style={{
+                        top: "18%",
+                        left: highlight.side === "local" ? "58%" : "10%",
+                      }}
+                    >
+                      <div
+                        className={`min-w-[180px] rounded-[28px] border border-white/20 bg-gradient-to-br ${option.burstClassName} px-4 py-3 text-white shadow-2xl backdrop-blur-md`}
+                        style={{ boxShadow: `0 18px 50px ${option.glowColor}` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 border border-white/20">
+                            <Icon className="h-7 w-7 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75">
+                              {highlight.side === "local"
+                                ? "You sent"
+                                : "Received"}
+                            </p>
+                            <p className="text-lg font-bold leading-tight">
+                              {option.label} Reaction
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+
+                {reactionBursts.map((reaction) => {
+                  const option = getReactionOption(reaction.reaction);
+                  const Icon = option.Icon;
+
+                  return (
+                    <motion.div
+                      key={reaction.id}
+                      initial={{
+                        opacity: 0,
+                        x: 0,
+                        y: 0,
+                        scale: 0.45,
+                        rotate: 0,
+                      }}
+                      animate={{
+                        opacity: [0, 1, 1, 0],
+                        x: reaction.xOffset,
+                        y: -reaction.yOffset,
+                        scale: [0.45, 1.08, 0.96],
+                        rotate: reaction.rotate,
+                      }}
+                      exit={{ opacity: 0, scale: 0.35 }}
+                      transition={{
+                        duration: 1.95,
+                        delay: reaction.delay,
+                        ease: "easeOut",
+                      }}
+                      className="absolute bottom-24 pointer-events-none z-20 select-none"
+                      style={{
+                        left: reaction.side === "local" ? "72%" : "28%",
+                      }}
+                    >
+                      <div
+                        className={`flex items-center justify-center rounded-[28px] border border-white/25 bg-gradient-to-br ${option.burstClassName} backdrop-blur-md`}
+                        style={{
+                          width: reaction.size,
+                          height: reaction.size,
+                          boxShadow: `0 14px 40px ${option.glowColor}`,
+                        }}
+                      >
+                        <Icon
+                          className={`h-[42%] w-[42%] ${option.iconClassName}`}
+                        />
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+
               {/* Face detection warning */}
               {showFaceWarning && (
                 <motion.div
@@ -2083,6 +2498,28 @@ const Stream = () => {
           {/* Next / Skip button */}
           {state === "connected" && (
             <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1.5 rounded-2xl glass px-2 py-2 border border-border/40">
+                {REACTION_OPTIONS.map((reaction) => (
+                  <button
+                    key={reaction.kind}
+                    type="button"
+                    onClick={() => handleSendReaction(reaction.kind)}
+                    className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl border transition-all active:scale-95 ${reaction.buttonClassName}`}
+                    aria-label={`Send ${reaction.label} reaction`}
+                    title={reaction.label}
+                  >
+                    <reaction.Icon className="h-5 w-5 text-white" />
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10px] text-muted-foreground font-medium">
+                Quick reactions
+              </span>
+            </div>
+          )}
+
+          {state === "connected" && (
+            <div className="flex flex-col items-center gap-1">
               <Button
                 onClick={handleSkip}
                 className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-bold neon-glow-blue hover:scale-105 transition-transform"
@@ -2159,6 +2596,199 @@ const Stream = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={!!ratingPrompt}
+        onOpenChange={(open) => {
+          if (!open && !ratingSubmitting) {
+            finishRatingPrompt();
+          }
+        }}
+      >
+        <DialogContent className="glass border-border/50 max-w-2xl overflow-hidden">
+          {ratingPrompt && (
+            <div className="relative">
+              <div className="absolute inset-x-0 -top-10 h-28 bg-gradient-to-r from-primary/15 via-secondary/20 to-primary/10 blur-3xl" />
+              <DialogHeader className="relative">
+                <DialogTitle className="text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-primary" />
+                  Create a Vibeprint
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="relative space-y-6 pt-2">
+                <div className="rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/10 via-background/70 to-secondary/10 p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.26em] text-primary/80 mb-2">
+                        Public stream reputation
+                      </p>
+                      <h3 className="text-xl font-bold text-foreground">
+                        Rate @{ratingPrompt.targetUser.username}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mt-1 max-w-lg">
+                        Your feedback shapes this user's public Vibeprint — a
+                        premium live-stream reputation signal built from real
+                        conversations.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-background/60 px-4 py-3 text-right backdrop-blur-sm">
+                      <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                        Session length
+                      </p>
+                      <p className="text-xl font-bold text-foreground">
+                        {formatTime(ratingPrompt.durationSeconds)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border/40 bg-background/40 p-5">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Overall Aura Score
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        First impression, chemistry, and overall quality in one
+                        signal.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-3xl font-black text-foreground">
+                        {ratingForm.overall_rating}.0
+                      </div>
+                      <div className="text-xs uppercase tracking-[0.22em] text-primary">
+                        {getAuraLabel(ratingForm.overall_rating)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5].map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() =>
+                          updateRatingValue("overall_rating", value)
+                        }
+                        className={`flex min-w-[68px] items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition-all ${
+                          ratingForm.overall_rating === value
+                            ? "border-primary bg-primary/15 text-primary shadow-[0_0_24px_rgba(34,211,238,0.16)]"
+                            : "border-border/40 bg-background/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                        }`}
+                      >
+                        <Star
+                          className={`h-4 w-4 ${ratingForm.overall_rating >= value ? "fill-current" : ""}`}
+                        />
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  {STREAM_RATING_DIMENSIONS.map((dimension) => (
+                    <div
+                      key={dimension.key}
+                      className="rounded-3xl border border-border/40 bg-background/40 p-4"
+                    >
+                      <div className="mb-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          {dimension.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          {dimension.description}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() =>
+                              updateRatingValue(dimension.key, value)
+                            }
+                            className={`rounded-2xl border py-2 text-sm font-bold transition-all ${
+                              ratingForm[dimension.key] === value
+                                ? "border-secondary bg-secondary/15 text-secondary"
+                                : "border-border/40 bg-background/50 text-muted-foreground hover:border-secondary/25"
+                            }`}
+                          >
+                            {value}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-3xl border border-border/40 bg-background/40 p-5">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Would you stream with them again?
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        This powers a public reconnect rate on their profile.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateRatingValue("would_reconnect", true)
+                        }
+                        className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition-all ${
+                          ratingForm.would_reconnect
+                            ? "border-neon-green/30 bg-neon-green/10 text-neon-green"
+                            : "border-border/40 bg-background/50 text-muted-foreground"
+                        }`}
+                      >
+                        Yes, absolutely
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateRatingValue("would_reconnect", false)
+                        }
+                        className={`rounded-2xl border px-4 py-2 text-sm font-semibold transition-all ${
+                          !ratingForm.would_reconnect
+                            ? "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                            : "border-border/40 bg-background/50 text-muted-foreground"
+                        }`}
+                      >
+                        Maybe not
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={finishRatingPrompt}
+                    disabled={ratingSubmitting}
+                    className="rounded-2xl border-border/50"
+                  >
+                    Skip for now
+                  </Button>
+                  <Button
+                    onClick={handleSubmitRating}
+                    disabled={ratingSubmitting}
+                    className="rounded-2xl bg-gradient-to-r from-primary to-secondary text-primary-foreground font-bold min-w-[180px]"
+                  >
+                    {ratingSubmitting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-2" />
+                    )}
+                    Save Vibeprint
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 

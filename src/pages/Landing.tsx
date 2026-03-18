@@ -1,5 +1,10 @@
 import { Link } from "react-router-dom";
-import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  type MotionValue,
+} from "framer-motion";
 import { useEffect, useRef, useCallback } from "react";
 import {
   Video,
@@ -15,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import PrivateAvatarImage from "@/components/PrivateAvatarImage";
 import ParticleBackground from "@/components/layout/ParticleBackground";
+import { floatingPhotos } from "@/lib/floatingPhotos";
 import { useAuthStore } from "@/stores/useAuthStore";
 
 const features = [
@@ -57,70 +63,6 @@ const stats = [
   { value: "190+", label: "Countries", icon: Globe },
 ];
 
-/* ─── Floating Photo Mosaic ─── */
-const floatingPhotos = [
-  {
-    src: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80",
-    name: "Sophie",
-    country: "France",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80",
-    name: "James",
-    country: "Australia",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&q=80",
-    name: "Yuki",
-    country: "Japan",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&q=80",
-    name: "Carlos",
-    country: "Brazil",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&q=80",
-    name: "Aisha",
-    country: "Nigeria",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&q=80",
-    name: "Liam",
-    country: "Ireland",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=80",
-    name: "Priya",
-    country: "India",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&q=80",
-    name: "Erik",
-    country: "Sweden",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&q=80",
-    name: "Mia",
-    country: "USA",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=80",
-    name: "Lin",
-    country: "China",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400&q=80",
-    name: "Emma",
-    country: "Germany",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80",
-    name: "Omar",
-    country: "Egypt",
-  },
-];
-
 /* Positions spread across the viewport — two loose columns on each side */
 const photoPositions: { x: string; y: string; size: string; rotate: number }[] =
   [
@@ -140,11 +82,23 @@ const photoPositions: { x: string; y: string; size: string; rotate: number }[] =
 
 /* ─── Connection Lines SVG ─── */
 const connectionPairs = [
-  [0, 2], [1, 3], [2, 4], [3, 5], [4, 6], [5, 7], [8, 10], [9, 11], [0, 8], [1, 9],
+  [0, 2],
+  [1, 3],
+  [2, 4],
+  [3, 5],
+  [4, 6],
+  [5, 7],
+  [8, 10],
+  [9, 11],
+  [0, 8],
+  [1, 9],
 ];
 
 const ConnectionLines = () => (
-  <svg className="absolute inset-0 w-full h-full pointer-events-none z-[1]" aria-hidden="true">
+  <svg
+    className="absolute inset-0 w-full h-full pointer-events-none z-[1]"
+    aria-hidden="true"
+  >
     <defs>
       <linearGradient id="line-grad" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="hsl(190 100% 50% / 0.15)" />
@@ -158,12 +112,21 @@ const ConnectionLines = () => (
       return (
         <motion.line
           key={i}
-          x1={pA.x} y1={pA.y} x2={pB.x} y2={pB.y}
+          x1={pA.x}
+          y1={pA.y}
+          x2={pB.x}
+          y2={pB.y}
           stroke="url(#line-grad)"
           strokeWidth="1"
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: [0, 0.4, 0.4, 0] }}
-          transition={{ duration: 6, delay: i * 0.8, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }}
+          transition={{
+            duration: 6,
+            delay: i * 0.8,
+            repeat: Infinity,
+            repeatDelay: 4,
+            ease: "easeInOut",
+          }}
         />
       );
     })}
@@ -193,8 +156,19 @@ const FloatingPhoto = ({
   return (
     <motion.div
       className="absolute z-0"
-      style={{ left: pos.x, top: pos.y, x: parallaxX, y: parallaxY, perspective: 800 }}
-      initial={{ opacity: 0, scale: 0, rotate: pos.rotate + 15, filter: "blur(12px)" }}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        x: parallaxX,
+        y: parallaxY,
+        perspective: 800,
+      }}
+      initial={{
+        opacity: 0,
+        scale: 0,
+        rotate: pos.rotate + 15,
+        filter: "blur(12px)",
+      }}
       animate={{
         opacity: [0, 0.7, 0.7, 0],
         scale: [0, 1.05, 1, 0.9],
@@ -218,9 +192,21 @@ const FloatingPhoto = ({
         }}
         transition={{
           y: { duration: floatDuration, repeat: Infinity, ease: "easeInOut" },
-          rotateX: { duration: floatDuration + 0.5, repeat: Infinity, ease: "easeInOut" },
-          rotateY: { duration: floatDuration + 1, repeat: Infinity, ease: "easeInOut" },
-          scale: { duration: breathDuration, repeat: Infinity, ease: "easeInOut" },
+          rotateX: {
+            duration: floatDuration + 0.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+          },
+          rotateY: {
+            duration: floatDuration + 1,
+            repeat: Infinity,
+            ease: "easeInOut",
+          },
+          scale: {
+            duration: breathDuration,
+            repeat: Infinity,
+            ease: "easeInOut",
+          },
         }}
         style={{ transformStyle: "preserve-3d" }}
       >
@@ -230,11 +216,20 @@ const FloatingPhoto = ({
         >
           <div className="absolute inset-0 z-20 pointer-events-none royal-shimmer-sweep" />
           <div className="absolute inset-0 z-10 rounded-2xl royal-neon-ring pointer-events-none" />
-          <img src={photo.src} alt={photo.name} className="w-full h-full object-cover" loading="lazy" />
+          <img
+            src={photo.src}
+            alt={photo.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-[5]" />
           <div className="absolute bottom-1.5 left-2 right-2 z-[6]">
-            <p className="text-[10px] sm:text-xs font-semibold text-white truncate drop-shadow-lg">{photo.name}</p>
-            <p className="text-[8px] sm:text-[10px] text-white/70">{photo.country}</p>
+            <p className="text-[10px] sm:text-xs font-semibold text-white truncate drop-shadow-lg">
+              {photo.name}
+            </p>
+            <p className="text-[8px] sm:text-[10px] text-white/70">
+              {photo.country}
+            </p>
           </div>
           <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm rounded-full px-1.5 py-0.5 z-[6]">
             <span className="w-1.5 h-1.5 bg-neon-green rounded-full animate-pulse" />
@@ -275,7 +270,10 @@ const HeroSection = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
       className="relative z-10 flex flex-col items-center text-center px-6 pt-16 pb-20 max-w-5xl mx-auto min-h-[90vh]"
     >
       {/* Royal floating photos behind hero content */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div
+        className="absolute inset-0 overflow-hidden pointer-events-none"
+        aria-hidden="true"
+      >
         <ConnectionLines />
         {floatingPhotos.map((photo, i) => (
           <FloatingPhoto
