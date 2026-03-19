@@ -9,6 +9,7 @@ import {
   PhoneOff,
   ArrowLeft,
   Users,
+  Smile,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -109,6 +110,7 @@ const GroupStream = () => {
   const [activeParticipantIds, setActiveParticipantIds] = useState<string[]>(
     [],
   );
+  const [isParticipantsPanelOpen, setIsParticipantsPanelOpen] = useState(true);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -992,6 +994,60 @@ const GroupStream = () => {
 
   const participantCount = participants.length;
 
+  const memberProfiles = members.filter(
+    (member) => member.user_id !== currentUser?.id,
+  );
+
+  const connectedPeerById = new Map(
+    connectedPeers.map((peer) => [peer.userId, peer] as const),
+  );
+
+  const connectedTileCount = connectedPeers.length + 1;
+
+  const getConnectedTileClass = (count: number, isLocal: boolean) => {
+    if (count <= 1) {
+      return "md:col-span-2";
+    }
+    if (count === 2) {
+      return "";
+    }
+    if (count === 3 && isLocal) {
+      return "md:col-span-2";
+    }
+    return "";
+  };
+
+  const sidebarMembers = [
+    ...(currentUser
+      ? [
+          {
+            userId: currentUser.id,
+            displayName: "Me",
+            avatar: currentUser.avatar_url,
+            status: isCameraOn ? "IN CALL" : "CAMERA OFF",
+            statusClass: isCameraOn ? "text-cyan-300" : "text-slate-400",
+          },
+        ]
+      : []),
+    ...memberProfiles.map((member) => {
+      const displayName =
+        member.profile?.name || member.profile?.username || "Member";
+      const hasStream = !!connectedPeerById.get(member.user_id)?.stream;
+      const isActive = activeParticipantIds.includes(member.user_id);
+      return {
+        userId: member.user_id,
+        displayName,
+        avatar: member.profile?.avatar_url || "",
+        status: hasStream ? "IN CALL" : isActive ? "CONNECTING" : "RINGING",
+        statusClass: hasStream
+          ? "text-cyan-300"
+          : isActive
+            ? "text-blue-300"
+            : "text-slate-400",
+      };
+    }),
+  ];
+
   const getGridClass = (count: number) => {
     if (count <= 1) return "grid-cols-1 max-w-4xl";
     if (count === 2) return "grid-cols-1 md:grid-cols-2 max-w-6xl";
@@ -1017,7 +1073,6 @@ const GroupStream = () => {
   // During active call states, render full-screen (no sidebar/navbar)
   const isCallActive =
     status === "calling" || status === "connecting" || status === "connected";
-
   const callContent = (
     <div
       className={
@@ -1027,7 +1082,6 @@ const GroupStream = () => {
       }
     >
       <AnimatePresence mode="wait">
-        {/* ====== IDLE STATE ====== */}
         {status === "idle" && (
           <motion.div
             key="idle"
@@ -1072,7 +1126,6 @@ const GroupStream = () => {
           </motion.div>
         )}
 
-        {/* ====== CALLING STATE — Ringing out ====== */}
         {status === "calling" && (
           <motion.div
             key="calling"
@@ -1120,7 +1173,6 @@ const GroupStream = () => {
               </p>
             </div>
 
-            {/* Show local video preview during calling */}
             <div className="w-40 h-52 rounded-2xl overflow-hidden border-2 border-border/30 shadow-xl">
               <video
                 ref={localVideoCallbackRef}
@@ -1143,7 +1195,6 @@ const GroupStream = () => {
           </motion.div>
         )}
 
-        {/* ====== CONNECTING STATE ====== */}
         {status === "connecting" && (
           <motion.div
             key="connecting"
@@ -1187,75 +1238,114 @@ const GroupStream = () => {
           </motion.div>
         )}
 
-        {/* ====== CONNECTED STATE — Active group video call ====== */}
         {status === "connected" && (
           <motion.div
             key="connected"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 relative bg-black overflow-hidden flex flex-col min-h-0"
+            className="flex-1 relative overflow-hidden flex min-h-0 bg-[#030712]"
           >
-            {/* Top info bar */}
-            <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between z-20">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                  <PrivateImage
-                    src={currentGroup?.avatar_url}
-                    fallback={<Users className="w-4 h-4 text-white/70" />}
-                  />
-                </div>
-                <div>
-                  <p className="text-white text-sm font-medium">
-                    {currentGroup?.name}
-                  </p>
-                  <p className="text-white/60 text-xs">
-                    {formatDuration(callDuration)} · {participantCount}{" "}
-                    participant
-                    {participantCount > 1 ? "s" : ""}
-                    {" · "}
-                    <span
-                      className={
-                        callDuration >= MAX_CALL_DURATION - 60
-                          ? "text-red-400 font-medium"
-                          : "text-white/40"
+            <div className="flex-1 min-h-0 flex">
+              <div className="flex-1 min-h-0 flex flex-col bg-gradient-to-b from-[#061327] via-[#040a16] to-[#020611]">
+                <div className="px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                      <PrivateImage
+                        src={currentGroup?.avatar_url}
+                        fallback={<Users className="w-4 h-4 text-white/70" />}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-medium">
+                        {currentGroup?.name}
+                      </p>
+                      <p className="text-white/60 text-xs">
+                        {formatDuration(callDuration)} · {participantCount}{" "}
+                        participant
+                        {participantCount > 1 ? "s" : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                      <span className="text-cyan-300 text-[11px] tracking-[0.18em] font-semibold">
+                        LIVE
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        setIsParticipantsPanelOpen((prev) => !prev)
                       }
+                      className="w-9 h-9 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 transition-colors flex items-center justify-center"
+                      aria-label="Toggle participants panel"
                     >
-                      {formatDuration(
-                        Math.max(0, MAX_CALL_DURATION - callDuration),
-                      )}{" "}
-                      left
-                    </span>
-                  </p>
+                      <Users className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                <span className="text-green-400 text-xs font-medium">Live</span>
-              </div>
-            </div>
 
-            {/* Video Grid */}
-            <div className="flex-1 min-h-0 pt-16 pb-3 px-2">
-              <div
-                className={`h-full w-full mx-auto grid ${getGridClass(participantCount)} gap-2 auto-rows-fr`}
-              >
-                {participants.map((participant, index) => {
-                  const displayName = participant.isLocal
-                    ? "You"
-                    : participant.profile?.name ||
-                      participant.profile?.username ||
-                      "User";
-                  const isVideoOff = participant.isLocal
-                    ? !isCameraOn
-                    : !participant.stream;
+                <div className="flex-1 min-h-0 px-3 sm:px-6 pb-3 pt-2">
+                  <div
+                    className={`h-full grid ${
+                      connectedTileCount <= 1
+                        ? "grid-cols-1 md:grid-cols-2"
+                        : connectedTileCount === 2
+                          ? "grid-cols-1 md:grid-cols-2"
+                          : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+                    } gap-3 auto-rows-fr`}
+                  >
+                    {memberProfiles.map((member) => {
+                      const peer = connectedPeerById.get(member.user_id);
+                      const displayName =
+                        member.profile?.name ||
+                        member.profile?.username ||
+                        "Member";
 
-                  return (
+                      return (
+                        <div
+                          key={member.user_id}
+                          className="relative rounded-[26px] border border-cyan-500/15 bg-gradient-to-b from-[#071221] via-[#050d1a] to-[#03070f] overflow-hidden min-h-[220px]"
+                        >
+                          {peer?.stream ? (
+                            <RemoteVideo stream={peer.stream} />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                              <div className="w-20 h-20 rounded-full ring-2 ring-cyan-400/70 bg-[#0f1f34] overflow-hidden flex items-center justify-center">
+                                <PrivateImage
+                                  src={member.profile?.avatar_url}
+                                  fallback={
+                                    <span className="text-xl font-semibold text-white">
+                                      {getInitials(displayName)}
+                                    </span>
+                                  }
+                                />
+                              </div>
+                              <p className="text-white/85 text-base font-medium">
+                                {displayName}
+                              </p>
+                            </div>
+                          )}
+
+                          <div className="absolute inset-x-0 bottom-0 px-3 py-2 bg-gradient-to-t from-black/70 to-transparent">
+                            <div className="flex items-center justify-between">
+                              <span className="text-white/85 text-xs truncate max-w-[70%]">
+                                {displayName}
+                              </span>
+                              <span className="text-[10px] tracking-[0.12em] text-cyan-300 font-semibold">
+                                {peer?.stream ? "LIVE" : "RINGING"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
                     <div
-                      key={participant.userId}
-                      className={`relative rounded-2xl overflow-hidden bg-gray-900 min-h-0 h-full ring-1 ring-white/10 ${getTileClass(participantCount, index)}`}
+                      className={`relative rounded-[26px] border border-cyan-500/20 bg-gradient-to-b from-[#0a1528] via-[#070f1e] to-[#040911] overflow-hidden min-h-[220px] ${getConnectedTileClass(connectedTileCount, true)}`}
                     >
-                      {participant.isLocal ? (
+                      {isCameraOn ? (
                         <video
                           ref={localVideoCallbackRef}
                           autoPlay
@@ -1264,105 +1354,130 @@ const GroupStream = () => {
                           className="w-full h-full object-cover"
                           style={{ transform: "scaleX(-1)" }}
                         />
-                      ) : participant.stream ? (
-                        <RemoteVideo stream={participant.stream} />
-                      ) : null}
-
-                      {isVideoOff && (
-                        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
-                          <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-                            <span className="text-2xl font-bold text-white">
-                              {getInitials(
-                                participant.profile?.name ||
-                                  participant.profile?.username ||
-                                  displayName,
-                              )}
-                            </span>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                          <div className="w-16 h-16 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
+                            <VideoOff className="w-7 h-7 text-slate-300" />
                           </div>
+                          <p className="text-white font-semibold">
+                            Me (Camera Off)
+                          </p>
                         </div>
                       )}
 
-                      <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/75 to-transparent">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2.5 py-1 max-w-[80%]">
-                            <span className="text-white text-xs font-medium truncate block">
-                              {displayName}
-                            </span>
-                          </div>
-
-                          {!participant.isLocal && !participant.stream && (
-                            <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 shrink-0">
-                              <span className="text-white/70 text-[10px] font-medium">
-                                Connecting...
-                              </span>
-                            </div>
-                          )}
-
-                          {participant.isLocal && isMuted && (
-                            <div className="bg-red-500/80 rounded-full p-1.5 shrink-0">
-                              <MicOff className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                        </div>
+                      <div className="absolute inset-x-0 bottom-0 px-3 py-2 bg-gradient-to-t from-black/70 to-transparent flex items-center justify-between">
+                        <span className="text-white text-xs">Me</span>
+                        {isMuted && (
+                          <span className="inline-flex items-center gap-1 text-[10px] text-rose-300">
+                            <MicOff className="w-3 h-3" /> Muted
+                          </span>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-
-                {participantCount === 1 && (
-                  <div className="rounded-2xl bg-gray-900/50 flex flex-col items-center justify-center gap-3 min-h-[200px]">
-                    <motion.div
-                      animate={{ opacity: [0.3, 0.7, 0.3] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
-                      <Users className="w-10 h-10 text-white/20" />
-                    </motion.div>
-                    <p className="text-white/30 text-xs">
-                      Waiting for others to join...
-                    </p>
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            {/* Controls */}
-            <div className="px-4 pb-4 pt-1 z-20">
-              <div className="mx-auto w-fit flex items-center gap-4 bg-black/50 backdrop-blur-xl rounded-full px-6 py-4">
-                <button
-                  onClick={toggleMute}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-                    isMuted
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-white/10 text-white hover:bg-white/20"
-                  }`}
-                >
-                  {isMuted ? (
-                    <MicOff className="w-5 h-5" />
-                  ) : (
-                    <Mic className="w-5 h-5" />
-                  )}
-                </button>
-                <button
-                  onClick={toggleCamera}
-                  className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-                    !isCameraOn
-                      ? "bg-red-500/20 text-red-400"
-                      : "bg-white/10 text-white hover:bg-white/20"
-                  }`}
-                >
-                  {isCameraOn ? (
-                    <Video className="w-5 h-5" />
-                  ) : (
-                    <VideoOff className="w-5 h-5" />
-                  )}
-                </button>
-                <button
-                  onClick={endCallWithSignal}
-                  className="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
-                >
-                  <PhoneOff className="w-6 h-6" />
-                </button>
+                <div className="px-4 pb-5 pt-2 z-20">
+                  <div className="mx-auto w-fit flex items-center gap-3 bg-black/45 backdrop-blur-xl rounded-full border border-white/10 px-4 py-3">
+                    <button
+                      onClick={toggleCamera}
+                      className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${
+                        !isCameraOn
+                          ? "bg-slate-700 text-slate-200"
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      }`}
+                    >
+                      {isCameraOn ? (
+                        <Video className="w-5 h-5" />
+                      ) : (
+                        <VideoOff className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={toggleMute}
+                      className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors ${
+                        isMuted
+                          ? "bg-slate-700 text-slate-200"
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      }`}
+                    >
+                      {isMuted ? (
+                        <MicOff className="w-5 h-5" />
+                      ) : (
+                        <Mic className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() =>
+                        toast({
+                          title: "Reactions",
+                          description: "Emoji reactions panel is coming soon.",
+                        })
+                      }
+                      className="w-11 h-11 rounded-full flex items-center justify-center bg-white/10 text-white hover:bg-white/20 transition-colors"
+                    >
+                      <Smile className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        setIsParticipantsPanelOpen((prev) => !prev)
+                      }
+                      className="w-11 h-11 rounded-full flex items-center justify-center bg-white/10 text-white hover:bg-white/20 transition-colors"
+                    >
+                      <Users className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={endCallWithSignal}
+                      className="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg shadow-red-500/30"
+                    >
+                      <PhoneOff className="w-6 h-6" />
+                    </button>
+                  </div>
+                </div>
               </div>
+
+              {isParticipantsPanelOpen && (
+                <aside className="w-[260px] sm:w-[280px] border-l border-cyan-500/20 bg-gradient-to-b from-[#060d1d] via-[#050b18] to-[#040912] px-4 py-5 flex flex-col">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-cyan-300 font-semibold mb-4">
+                    Active Participants
+                  </p>
+                  <div className="space-y-3 overflow-y-auto pr-1">
+                    {sidebarMembers.map((member) => (
+                      <div
+                        key={member.userId}
+                        className={`rounded-2xl px-3 py-2 border ${
+                          member.displayName === "Me"
+                            ? "border-cyan-500/30 bg-cyan-500/10"
+                            : "border-transparent"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-[#0d1d33] ring-1 ring-cyan-500/40 flex items-center justify-center">
+                            <PrivateImage
+                              src={member.avatar}
+                              fallback={
+                                <span className="text-white text-sm font-semibold">
+                                  {getInitials(member.displayName)}
+                                </span>
+                              }
+                            />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium truncate">
+                              {member.displayName}
+                            </p>
+                            <p
+                              className={`text-[10px] tracking-[0.12em] font-semibold ${member.statusClass}`}
+                            >
+                              {member.status}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </aside>
+              )}
             </div>
           </motion.div>
         )}
