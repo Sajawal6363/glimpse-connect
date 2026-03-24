@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useToast } from "@/hooks/use-toast";
 import ParticleBackground from "@/components/layout/ParticleBackground";
 
@@ -67,6 +68,7 @@ const Checkout = () => {
   const { plan: planId } = useParams<{ plan: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const { changePlan, subscription } = useSubscriptionStore();
   const { toast } = useToast();
 
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(
@@ -141,6 +143,14 @@ const Checkout = () => {
 
     // Simulate payment processing
     await new Promise((r) => setTimeout(r, 2500));
+
+    if (user?.id) {
+      await changePlan(
+        user.id,
+        (planId === "vip" ? "vip" : "premium") as "premium" | "vip",
+        billingCycle,
+      );
+    }
 
     toast({
       title: "🎉 Payment Successful!",
@@ -491,6 +501,11 @@ const Checkout = () => {
                       {user.email}
                     </span>
                   </p>
+                  {subscription && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current subscription status: {subscription.status}
+                    </p>
+                  )}
                 </div>
               )}
             </motion.div>

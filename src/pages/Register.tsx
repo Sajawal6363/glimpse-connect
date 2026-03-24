@@ -127,7 +127,7 @@ const Register = () => {
     setSelectedInterests((prev) =>
       prev.includes(interest)
         ? prev.filter((i) => i !== interest)
-        : prev.length < 10
+        : prev.length < 5
           ? [...prev, interest]
           : prev,
     );
@@ -621,7 +621,7 @@ const Register = () => {
                     Your Interests
                   </h2>
                   <p className="text-muted-foreground mb-6">
-                    Pick 3–10 topics you love ({selectedInterests.length}/10)
+                    Pick 3–5 topics you love ({selectedInterests.length}/5)
                   </p>
                   <div className="flex flex-wrap gap-2 mb-6">
                     {interests.map((interest) => (

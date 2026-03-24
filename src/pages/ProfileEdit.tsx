@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { profileEditSchema, type ProfileEditFormData } from "@/lib/validators";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,7 @@ import { useSignedUrl } from "@/lib/storage";
 
 const ProfileEdit = () => {
   const { user, updateProfile, uploadAvatar } = useAuthStore();
+  const { getMaxInterests, requireFeature } = useSubscriptionStore();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
@@ -105,13 +107,30 @@ const ProfileEdit = () => {
   };
 
   const toggleInterest = (interest: string) => {
+    const maxInterests = getMaxInterests();
     setSelectedInterests((prev) =>
       prev.includes(interest)
         ? prev.filter((i) => i !== interest)
-        : prev.length < 10
+        : maxInterests === null || prev.length < maxInterests
           ? [...prev, interest]
           : prev,
     );
+
+    if (
+      !selectedInterests.includes(interest) &&
+      maxInterests !== null &&
+      selectedInterests.length >= maxInterests
+    ) {
+      requireFeature("interestBasedMatching", {
+        title: "Interest limit reached",
+        description:
+          "Free plan supports up to 5 interests. Upgrade to Premium for unlimited interests.",
+      });
+      toast({
+        title: "Interest cap reached",
+        description: "Upgrade to Premium for unlimited interests.",
+      });
+    }
   };
 
   const onSubmit = async (data: ProfileEditFormData) => {
@@ -315,7 +334,8 @@ const ProfileEdit = () => {
 
             <div>
               <label className="text-sm text-muted-foreground mb-3 block">
-                Interests ({selectedInterests.length}/10)
+                Interests ({selectedInterests.length}/{getMaxInterests() ?? "∞"}
+                )
               </label>
               <div className="flex flex-wrap gap-2">
                 {interests.map((interest) => (

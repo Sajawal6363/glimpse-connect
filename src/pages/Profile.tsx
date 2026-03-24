@@ -26,6 +26,7 @@ import {
   Shield,
   Zap,
   RefreshCw,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSocialStore } from "@/stores/useSocialStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import {
   supabase,
   type Profile as ProfileType,
@@ -52,6 +54,16 @@ import { getAuraCaption, getAuraLabel } from "@/lib/streamRatings";
 
 const MAX_GALLERY_IMAGES = 5;
 
+type ProfileViewer = {
+  created_at: string;
+  viewer: {
+    id: string;
+    username: string;
+    name: string;
+    avatar_url: string;
+  }[];
+};
+
 const Profile = () => {
   const { username } = useParams();
   const navigate = useNavigate();
@@ -60,6 +72,7 @@ const Profile = () => {
     isLoading: authLoading,
     uploadBanner,
   } = useAuthStore();
+  const { getCurrentEntitlements, requireFeature } = useSubscriptionStore();
   const {
     sendFollowRequest,
     cancelFollowRequest,
@@ -85,6 +98,7 @@ const Profile = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [ratingSummary, setRatingSummary] =
     useState<ProfileRatingSummaryType | null>(null);
+  const [profileViewers, setProfileViewers] = useState<ProfileViewer[]>([]);
 
   // Gallery state
   const [gallery, setGallery] = useState<GalleryImage[]>([]);
@@ -125,6 +139,13 @@ const Profile = () => {
       }
 
       setProfile(targetProfile);
+
+      if (currentUser && currentUser.id !== targetProfile.id) {
+        await supabase.from("profile_views").insert({
+          viewer_id: currentUser.id,
+          viewed_id: targetProfile.id,
+        });
+      }
 
       // Fetch follow counts (only accepted)
       const [{ count: followers }, { count: following }] = await Promise.all([
@@ -186,13 +207,28 @@ const Profile = () => {
 
       setRatingSummary((ratingData as ProfileRatingSummaryType | null) || null);
 
+      if (isOwn && getCurrentEntitlements().canSeeProfileViewers) {
+        const { data: viewersData } = await supabase
+          .from("profile_views")
+          .select(
+            "created_at, viewer:viewer_id(id, username, name, avatar_url)",
+          )
+          .eq("viewed_id", targetProfile.id)
+          .order("created_at", { ascending: false })
+          .limit(8);
+
+        setProfileViewers((viewersData as ProfileViewer[]) || []);
+      } else {
+        setProfileViewers([]);
+      }
+
       await fetchGallery(targetProfile.id, isOwn);
 
       setIsLoading(false);
     };
     fetchProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, currentUser, authLoading]);
+  }, [username, currentUser, authLoading, getCurrentEntitlements]);
 
   const fetchGallery = async (userId: string, isOwn: boolean) => {
     setGalleryLoading(true);
@@ -645,6 +681,72 @@ const Profile = () => {
                 <div className="text-xs text-muted-foreground">Following</div>
               </div>
             </div>
+
+            {isOwnProfile && (
+              <div className="mb-6 glass rounded-2xl p-4 text-left">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-primary" />
+                    Profile viewers
+                  </h3>
+                </div>
+
+                {getCurrentEntitlements().canSeeProfileViewers ? (
+                  profileViewers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No profile views yet.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {profileViewers.map((entry) => (
+                        <div
+                          key={`${entry.viewer?.[0]?.id || "viewer"}-${entry.created_at}`}
+                          className="flex items-center justify-between rounded-xl bg-muted/20 border border-border/30 p-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center text-xs font-bold">
+                              <PrivateImage
+                                src={entry.viewer?.[0]?.avatar_url}
+                                fallback={getInitials(
+                                  entry.viewer?.[0]?.name ||
+                                    entry.viewer?.[0]?.username,
+                                )}
+                              />
+                            </div>
+                            <span className="text-sm text-foreground">
+                              {entry.viewer?.[0]?.name ||
+                                entry.viewer?.[0]?.username ||
+                                "Unknown"}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(entry.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      See who viewed your profile with Premium or VIP.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        requireFeature("profileViewers", {
+                          title: "Profile viewers are Premium",
+                          description:
+                            "Upgrade to Premium or VIP to see exactly who viewed your profile.",
+                        })
+                      }
+                    >
+                      Unlock viewers
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}

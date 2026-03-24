@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { supabase, type Profile } from "@/lib/supabase";
 import { useGroupChatStore } from "@/stores/useGroupChatStore";
 import { useToast } from "@/hooks/use-toast";
@@ -43,7 +44,6 @@ interface CallParticipant {
 }
 
 const RING_TIMEOUT = 60_000; // 1 minute
-const MAX_CALL_DURATION = 60 * 60; // 1 hour in seconds
 const ACTIVE_CALL_DB_KEY = "active_group_calls";
 
 const STUN_URL =
@@ -99,6 +99,8 @@ const GroupStream = () => {
   const { currentGroup, members, fetchGroup, fetchMembers } =
     useGroupChatStore();
   const { toast } = useToast();
+  const { getMaxCallDurationSeconds, requireFeature } = useSubscriptionStore();
+  const maxCallDurationSeconds = getMaxCallDurationSeconds();
 
   const [status, setStatus] = useState<CallStatus>("idle");
   const [isMuted, setIsMuted] = useState(false);
@@ -779,8 +781,14 @@ const GroupStream = () => {
       ) {
         toast({
           title: "Call time limit reached",
-          description: "Group calls are limited to 1 hour.",
+          description: `Group calls are limited to ${Math.floor(maxCallDurationSeconds / 60)} minutes on your plan.`,
         });
+        if (maxCallDurationSeconds <= 3 * 60) {
+          requireFeature("priorityMatching", {
+            title: "Extend your group calls",
+            description: "Upgrade to Premium for up to 60 minutes per session.",
+          });
+        }
         // If host, end for everyone
         if (currentUser?.id && hostUserIdRef.current === currentUser.id) {
           sendSignal("end-all");
@@ -800,7 +808,7 @@ const GroupStream = () => {
         }
         setStatus("ended");
       }
-    }, MAX_CALL_DURATION * 1000);
+    }, maxCallDurationSeconds * 1000);
   };
 
   const startCall = async () => {
