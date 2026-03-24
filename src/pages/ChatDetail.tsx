@@ -24,6 +24,7 @@ import {
 import { useChat } from "@/hooks/useChat";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { supabase, type Profile, type Message } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { getInitials } from "@/lib/utils";
@@ -39,10 +40,17 @@ const ChatDetail = () => {
     userId || null,
   );
   const { sendImage } = useChatStore();
+  const {
+    canSendTextMessageToday,
+    canMessageNonFollowers,
+    canSendMedia,
+    requireFeature,
+  } = useSubscriptionStore();
   const { toast } = useToast();
   const [message, setMessage] = useState("");
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [isMutualFollow, setIsMutualFollow] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(
@@ -63,6 +71,33 @@ const ChatDetail = () => {
     };
     fetchUser();
   }, [userId]);
+
+  useEffect(() => {
+    const fetchRelationship = async () => {
+      if (!currentUser?.id || !userId) return;
+
+      const [{ data: iFollow }, { data: theyFollow }] = await Promise.all([
+        supabase
+          .from("follows")
+          .select("id")
+          .eq("follower_id", currentUser.id)
+          .eq("following_id", userId)
+          .eq("status", "accepted")
+          .maybeSingle(),
+        supabase
+          .from("follows")
+          .select("id")
+          .eq("follower_id", userId)
+          .eq("following_id", currentUser.id)
+          .eq("status", "accepted")
+          .maybeSingle(),
+      ]);
+
+      setIsMutualFollow(Boolean(iFollow && theyFollow));
+    };
+
+    void fetchRelationship();
+  }, [currentUser?.id, userId]);
 
   // Subscribe to typing indicator via presence
   useEffect(() => {
@@ -112,6 +147,36 @@ const ChatDetail = () => {
 
   const handleSend = async () => {
     if (!message.trim() || !currentUser || !userId) return;
+
+    if (!isMutualFollow && !canMessageNonFollowers()) {
+      requireFeature("messageAnyone", {
+        title: "Follow required on Free/Premium",
+        description:
+          "VIP members can message anyone. Upgrade to VIP or wait for a mutual follow.",
+      });
+      toast({
+        title: "Message locked",
+        description: "This chat requires mutual follow on your current plan.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const canSend = await canSendTextMessageToday(currentUser.id);
+    if (!canSend) {
+      requireFeature("priorityMatching", {
+        title: "Daily message limit reached",
+        description:
+          "Free plan includes 20 text messages/day. Upgrade to Premium for unlimited chat.",
+      });
+      toast({
+        title: "Daily limit reached",
+        description: "Upgrade to Premium for unlimited text messages.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const text = message.trim();
     setMessage("");
     typingChannelRef.current?.track({ typing: false });
@@ -129,6 +194,21 @@ const ChatDetail = () => {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !currentUser || !userId) return;
+
+    if (!canSendMedia()) {
+      requireFeature("mediaSharing", {
+        title: "Media sharing is Premium",
+        description:
+          "Upgrade to Premium or VIP to send images and videos in direct chat.",
+      });
+      toast({
+        title: "Media locked",
+        description: "Upgrade your plan to send media.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await sendImage(currentUser.id, userId, file);
     } catch (err) {

@@ -39,6 +39,8 @@ import {
 } from "@/lib/validators";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
+import { isAdminUser } from "@/lib/subscription";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
 
@@ -47,6 +49,7 @@ const Settings = () => {
   const { user, logout, changePassword, deleteAccount } = useAuthStore();
   const { settings, isLoading, fetchSettings, updateSetting } =
     useSettingsStore();
+  const { currentPlan, wallet, subscription } = useSubscriptionStore();
   const { toast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -168,6 +171,42 @@ const Settings = () => {
   };
 
   const sections = [
+    {
+      title: "Subscription",
+      icon: Lock,
+      items: [
+        {
+          label: `Current Plan: ${currentPlan.toUpperCase()}`,
+          type: "meta" as const,
+        },
+        {
+          label: "Manage Plan",
+          type: "link" as const,
+          href: "/plans",
+        },
+        {
+          label: `Wallet Coins: ${wallet?.coins ?? 0}`,
+          type: "meta" as const,
+        },
+        ...(subscription
+          ? [
+              {
+                label: `Subscription Status: ${subscription.status}`,
+                type: "meta" as const,
+              },
+            ]
+          : []),
+        ...(isAdminUser(user)
+          ? [
+              {
+                label: "Subscription Admin Panel",
+                type: "link" as const,
+                href: "/admin/subscriptions",
+              },
+            ]
+          : []),
+      ],
+    },
     {
       title: "Account",
       icon: User,
@@ -313,7 +352,8 @@ const Settings = () => {
                           onCheckedChange={(v) => handleToggle(item.key!, v)}
                           className="data-[state=checked]:bg-primary"
                         />
-                      ) : item.type === "link" && "href" in item ? (
+                      ) : item.type === "meta" ? null : item.type === "link" &&
+                        "href" in item ? (
                         <Link to={item.href!}>
                           <ChevronRight className="w-4 h-4 text-muted-foreground" />
                         </Link>

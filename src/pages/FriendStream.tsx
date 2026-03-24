@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { supabase, type Profile } from "@/lib/supabase";
 import { realtimeService } from "@/lib/realtime";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +29,6 @@ type CallStatus =
   | "declined";
 
 const RING_TIMEOUT = 60_000; // 60 seconds — like WhatsApp
-const MAX_CALL_DURATION = 60 * 60; // 1 hour in seconds
 const ACTIVE_FRIEND_CALL_KEY = "active_friend_call_session";
 
 const STUN_URL =
@@ -78,6 +78,8 @@ const FriendStream = () => {
   const navigate = useNavigate();
   const { user: currentUser } = useAuthStore();
   const { toast } = useToast();
+  const { getMaxCallDurationSeconds, requireFeature } = useSubscriptionStore();
+  const maxCallDurationSeconds = getMaxCallDurationSeconds();
 
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [status, setStatus] = useState<CallStatus>("idle");
@@ -432,11 +434,18 @@ const FriendStream = () => {
       ) {
         toast({
           title: "Call time limit reached",
-          description: "Calls are limited to 1 hour.",
+          description: `Calls are limited to ${Math.floor(maxCallDurationSeconds / 60)} minutes on your plan.`,
         });
+        if (maxCallDurationSeconds <= 3 * 60) {
+          requireFeature("priorityMatching", {
+            title: "Extend your call duration",
+            description:
+              "Upgrade to Premium for up to 60 minutes per call session.",
+          });
+        }
         endCallWithSignal();
       }
-    }, MAX_CALL_DURATION * 1000);
+    }, maxCallDurationSeconds * 1000);
   };
 
   const cleanupMedia = () => {
@@ -1260,13 +1269,13 @@ const FriendStream = () => {
                     {" · "}
                     <span
                       className={
-                        callDuration >= MAX_CALL_DURATION - 60
+                        callDuration >= maxCallDurationSeconds - 60
                           ? "text-red-400 font-medium"
                           : "text-white/40"
                       }
                     >
                       {formatDuration(
-                        Math.max(0, MAX_CALL_DURATION - callDuration),
+                        Math.max(0, maxCallDurationSeconds - callDuration),
                       )}{" "}
                       left
                     </span>

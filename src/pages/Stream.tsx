@@ -57,6 +57,7 @@ import InterstitialAd from "@/components/ads/InterstitialAd";
 import { useToast } from "@/hooks/use-toast";
 import AppLayout from "@/components/layout/AppLayout";
 import { supabase, type Profile } from "@/lib/supabase";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { floatingPhotoAvatars } from "@/lib/floatingPhotos";
 import {
   STREAM_RATING_DIMENSIONS,
@@ -107,7 +108,6 @@ type ReactionOption = {
 };
 
 /* ─── Constants ─── */
-const MAX_CALL_DURATION = 60 * 60; // 1 hour per stranger
 const STUN_URL =
   import.meta.env.VITE_STUN_URL || "stun:stun.l.google.com:19302";
 type ReactionBubble = {
@@ -225,6 +225,20 @@ const Stream = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const {
+    getCurrentEntitlements,
+    consumeSkip,
+    getRemainingSkips,
+    requireFeature,
+    canUseGenderFilter,
+    getMaxCallDurationSeconds,
+    wallet,
+    giftCatalog,
+    sendGift,
+    purchaseCoins,
+  } = useSubscriptionStore();
+  const entitlements = getCurrentEntitlements();
+  const maxCallDurationSeconds = getMaxCallDurationSeconds();
 
   /* ─── UI state ─── */
   const [state, setState] = useState<StreamState>("idle");
@@ -250,7 +264,7 @@ const Stream = () => {
     "good" | "fair" | "poor"
   >("good");
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
-  const [remainingTime, setRemainingTime] = useState(MAX_CALL_DURATION);
+  const [remainingTime, setRemainingTime] = useState(maxCallDurationSeconds);
   const [previewAvatars] = useState(floatingPhotoAvatars);
   const [reactionBursts, setReactionBursts] = useState<ReactionBubble[]>([]);
   const [reactionHighlights, setReactionHighlights] = useState<
@@ -264,6 +278,8 @@ const Stream = () => {
   );
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [resumeSearchAfterRating, setResumeSearchAfterRating] = useState(false);
+  const [sendingGiftId, setSendingGiftId] = useState<string | null>(null);
+  const [buyingCoins, setBuyingCoins] = useState(false);
 
   /* ─── Follow system ─── */
   const {
@@ -819,7 +835,7 @@ const Stream = () => {
     setUnreadChatCount(0);
     clearReactionBursts();
     setTimer(0);
-    setRemainingTime(MAX_CALL_DURATION);
+    setRemainingTime(maxCallDurationSeconds);
     const promptedForRating = openRatingPrompt(
       sessionId,
       ratingTarget,
@@ -844,7 +860,10 @@ const Stream = () => {
 
       const prefs = {
         country: countryFilter === "global" ? undefined : countryFilter,
-        gender: genderFilter === "any" ? undefined : genderFilter,
+        gender:
+          canUseGenderFilter() && genderFilter !== "any"
+            ? genderFilter
+            : undefined,
         profileGender: user.gender || undefined,
         profileCountry: user.country_code || undefined,
       };
@@ -878,6 +897,8 @@ const Stream = () => {
     endSessionRecord,
     clearReactionBursts,
     openRatingPrompt,
+    maxCallDurationSeconds,
+    canUseGenderFilter,
   ]);
 
   /* ─── Max call duration timer ─── */
@@ -887,7 +908,7 @@ const Stream = () => {
     if (countdownIntervalRef.current)
       clearInterval(countdownIntervalRef.current);
 
-    setRemainingTime(MAX_CALL_DURATION);
+    setRemainingTime(maxCallDurationSeconds);
 
     countdownIntervalRef.current = setInterval(() => {
       setRemainingTime((prev) => {
@@ -901,12 +922,20 @@ const Stream = () => {
         clearInterval(countdownIntervalRef.current);
       toast({
         title: "Time's up!",
-        description:
-          "Maximum 1 hour per session reached. Finding next stranger...",
+        description: `Maximum ${Math.floor(maxCallDurationSeconds / 60)} minutes per session reached.`,
       });
+      if (maxCallDurationSeconds <= 3 * 60) {
+        requireFeature("priorityMatching", {
+          title: "Free call limit reached",
+          description:
+            "Upgrade to Premium for extended calls up to 60 minutes per session.",
+        });
+      }
       handleSkipInternal();
-    }, MAX_CALL_DURATION * 1000) as unknown as ReturnType<typeof setTimeout>;
-  }, [toast, handleSkipInternal]);
+    }, maxCallDurationSeconds * 1000) as unknown as ReturnType<
+      typeof setTimeout
+    >;
+  }, [toast, handleSkipInternal, maxCallDurationSeconds, requireFeature]);
 
   /* ─── Signaling handler ─── */
   /* Helper: initiator creates & sends an offer */
@@ -1260,7 +1289,10 @@ const Stream = () => {
 
     const prefs = {
       country: countryFilter === "global" ? undefined : countryFilter,
-      gender: genderFilter === "any" ? undefined : genderFilter,
+      gender:
+        canUseGenderFilter() && genderFilter !== "any"
+          ? genderFilter
+          : undefined,
       // Pass actual profile data so others can filter against us
       profileGender: user.gender || undefined,
       profileCountry: user.country_code || undefined,
@@ -1291,7 +1323,14 @@ const Stream = () => {
     });
 
     matchmakingUnsubsRef.current = [unsub1, unsub2];
-  }, [startLocalMedia, user?.id, countryFilter, genderFilter, toast]);
+  }, [
+    startLocalMedia,
+    user?.id,
+    countryFilter,
+    genderFilter,
+    toast,
+    canUseGenderFilter,
+  ]);
 
   useEffect(() => {
     if (!resumeSearchAfterRating || ratingPrompt) return;
@@ -1349,13 +1388,34 @@ const Stream = () => {
 
   /* ─── User-facing skip ─── */
   const handleSkip = useCallback(async () => {
+    const skipResult = consumeSkip();
+    if (!skipResult.ok) {
+      toast({
+        title: "Skip limit reached",
+        description:
+          "Free plan includes 3 skips per hour. Upgrade for unlimited skips.",
+      });
+      requireFeature("priorityMatching", {
+        title: "Unlimited skips are Premium",
+        description: "Upgrade to Premium to keep skipping without limits.",
+      });
+      return;
+    }
+
     const newCount = skipCount + 1;
     setSkipCount(newCount);
-    if (newCount % 5 === 0) {
+    if (entitlements.adsEnabled && newCount % 5 === 0) {
       setShowInterstitial(true);
     }
     await handleSkipInternal();
-  }, [skipCount, handleSkipInternal]);
+  }, [
+    consumeSkip,
+    skipCount,
+    entitlements.adsEnabled,
+    handleSkipInternal,
+    toast,
+    requireFeature,
+  ]);
 
   /* ─── End streaming completely ─── */
   const handleEnd = useCallback(async () => {
@@ -1393,7 +1453,7 @@ const Stream = () => {
     setUnreadChatCount(0);
     clearReactionBursts();
     setTimer(0);
-    setRemainingTime(MAX_CALL_DURATION);
+    setRemainingTime(maxCallDurationSeconds);
     setState("idle");
     openRatingPrompt(sessionId, ratingTarget, timer, "idle");
   }, [
@@ -1405,6 +1465,7 @@ const Stream = () => {
     clearReactionBursts,
     openRatingPrompt,
     timer,
+    maxCallDurationSeconds,
   ]);
 
   /* ─── Toggle mute ─── */
@@ -1426,6 +1487,56 @@ const Stream = () => {
     }
     setIsCameraOn(!isCameraOn);
   }, [isCameraOn]);
+
+  const handleGiftSend = useCallback(
+    async (giftId: string) => {
+      if (!user?.id || !matchedUser?.id) return;
+      setSendingGiftId(giftId);
+      try {
+        await sendGift(user.id, matchedUser.id, giftId, {
+          sessionId: sessionIdRef.current,
+        });
+        const selectedGift = giftCatalog.find((item) => item.id === giftId);
+        toast({
+          title: "Gift sent",
+          description: `${selectedGift?.emoji ?? "🎁"} sent successfully`,
+        });
+      } catch (error) {
+        toast({
+          title: "Gift failed",
+          description:
+            error instanceof Error ? error.message : "Could not send gift.",
+          variant: "destructive",
+        });
+      } finally {
+        setSendingGiftId(null);
+      }
+    },
+    [user?.id, matchedUser?.id, sendGift, giftCatalog, toast],
+  );
+
+  const handleBuyStarterCoins = useCallback(async () => {
+    if (!user?.id || buyingCoins) return;
+    setBuyingCoins(true);
+    try {
+      const result = await purchaseCoins(user.id, "coins_100", "simulated");
+      toast({
+        title: "Coins purchased",
+        description: `Added ${result.added} coins to your wallet.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Purchase failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Could not complete coin purchase.",
+        variant: "destructive",
+      });
+    } finally {
+      setBuyingCoins(false);
+    }
+  }, [user?.id, buyingCoins, purchaseCoins, toast]);
 
   /* ─── Send chat message ─── */
   const handleSendChat = useCallback(() => {
@@ -1736,7 +1847,21 @@ const Stream = () => {
                           </p>
                           <Select
                             value={countryFilter}
-                            onValueChange={setCountryFilter}
+                            onValueChange={(value) => {
+                              if (
+                                value !== "global" &&
+                                value !== user?.country_code &&
+                                !entitlements.canUseAdvancedCountryFilters
+                              ) {
+                                requireFeature("advancedCountryFilters", {
+                                  title: "Advanced country filters are Premium",
+                                  description:
+                                    "Free plan supports only global and your own country filter.",
+                                });
+                                return;
+                              }
+                              setCountryFilter(value);
+                            }}
                           >
                             <SelectTrigger className="bg-muted/50 border-border/50 rounded-xl h-11">
                               <SelectValue placeholder="Global — Any country" />
@@ -1745,11 +1870,17 @@ const Stream = () => {
                               <SelectItem value="global">
                                 Global — Any country
                               </SelectItem>
-                              {countries.map((c) => (
-                                <SelectItem key={c.code} value={c.code}>
-                                  {c.flag} {c.name}
-                                </SelectItem>
-                              ))}
+                              {countries
+                                .filter(
+                                  (c) =>
+                                    entitlements.canUseAdvancedCountryFilters ||
+                                    c.code === user?.country_code,
+                                )
+                                .map((c) => (
+                                  <SelectItem key={c.code} value={c.code}>
+                                    {c.flag} {c.name}
+                                  </SelectItem>
+                                ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1773,13 +1904,29 @@ const Stream = () => {
                             ].map((opt) => (
                               <button
                                 key={opt.value}
-                                onClick={() => setGenderFilter(opt.value)}
+                                onClick={() => {
+                                  if (
+                                    opt.value !== "any" &&
+                                    !canUseGenderFilter()
+                                  ) {
+                                    requireFeature("genderFilter", {
+                                      title: "Gender filter is Premium",
+                                      description:
+                                        "Upgrade to Premium or VIP to unlock gender-based matching.",
+                                    });
+                                    return;
+                                  }
+                                  setGenderFilter(opt.value);
+                                }}
                                 className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                                   genderFilter === opt.value
                                     ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20"
                                     : "border-border/50 bg-muted/30 text-muted-foreground hover:bg-muted/50"
                                 }`}
                               >
+                                {opt.value !== "any" && !canUseGenderFilter()
+                                  ? "🔒 "
+                                  : ""}
                                 {opt.label}
                               </button>
                             ))}
@@ -2222,6 +2369,30 @@ const Stream = () => {
                 >
                   <Ban className="w-3.5 h-3.5" /> Block
                 </button>
+
+                <div className="glass-strong rounded-xl border border-white/20 px-3 py-2 text-xs text-white/85 space-y-2">
+                  <p className="font-semibold">Coins: {wallet?.coins ?? 0}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {giftCatalog.slice(0, 3).map((gift) => (
+                      <button
+                        key={gift.id}
+                        onClick={() => handleGiftSend(gift.id)}
+                        disabled={sendingGiftId === gift.id}
+                        className="px-2 py-1 rounded-lg border border-white/20 hover:bg-white/10 disabled:opacity-60"
+                        title={`${gift.name} (${gift.coinCost} coins)`}
+                      >
+                        {gift.emoji} {gift.coinCost}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={handleBuyStarterCoins}
+                    disabled={buyingCoins}
+                    className="w-full rounded-lg bg-primary/80 hover:bg-primary px-2 py-1 text-primary-foreground text-[11px] font-semibold disabled:opacity-60"
+                  >
+                    {buyingCoins ? "Buying..." : "Buy 100 coins"}
+                  </button>
+                </div>
               </div>
 
               {/* Self-view PiP */}
@@ -2528,6 +2699,18 @@ const Stream = () => {
               </Button>
               <span className="text-[10px] text-muted-foreground font-medium">
                 Skip & find new
+              </span>
+            </div>
+          )}
+
+          {entitlements.skipLimitPerHour && (
+            <div className="flex flex-col items-center gap-1">
+              <button className="text-xs px-6 sm:px-8 h-12 sm:h-14 rounded-xl glass border border-border/40 text-muted-foreground">
+                Skips left: {getRemainingSkips() ?? 0}/
+                {entitlements.skipLimitPerHour}
+              </button>
+              <span className="text-[10px] text-muted-foreground font-medium">
+                skip Limit Per Hour
               </span>
             </div>
           )}

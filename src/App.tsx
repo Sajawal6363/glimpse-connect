@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
+import { useSubscriptionStore } from "@/stores/useSubscriptionStore";
 import { realtimeService } from "@/lib/realtime";
 import { supabase, type Notification, type Profile } from "@/lib/supabase";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -13,6 +14,7 @@ import PublicRoute from "@/components/auth/PublicRoute";
 import CookieConsent from "@/components/CookieConsent";
 import IncomingCallOverlay from "@/components/IncomingCallOverlay";
 import CallFloatingWidget from "@/components/CallFloatingWidget";
+import UpgradePromptDialog from "@/components/subscription/UpgradePromptDialog";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -46,16 +48,22 @@ import TermsOfService from "./pages/TermsOfService";
 import CommunityGuidelines from "./pages/CommunityGuidelines";
 import CookiePolicy from "./pages/CookiePolicy";
 import Checkout from "./pages/Checkout";
+import AdminSubscriptions from "./pages/AdminSubscriptions";
 
 const queryClient = new QueryClient();
 
 const AppInner = () => {
   const { checkAuth, user } = useAuthStore();
   const { addNotification, fetchNotifications } = useNotificationStore();
+  const { initialize } = useSubscriptionStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    void initialize(user);
+  }, [initialize, user]);
 
   // Global real-time notification subscription
   useEffect(() => {
@@ -250,11 +258,20 @@ const AppInner = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/subscriptions"
+          element={
+            <ProtectedRoute>
+              <AdminSubscriptions />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <CookieConsent />
       <IncomingCallOverlay />
       <CallFloatingWidget />
+      <UpgradePromptDialog />
     </>
   );
 };
