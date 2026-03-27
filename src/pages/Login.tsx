@@ -10,6 +10,8 @@ import { loginSchema, type LoginFormData } from "@/lib/validators";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useToast } from "@/hooks/use-toast";
 import ParticleBackground from "@/components/layout/ParticleBackground";
+import googleIcon from "@/assets/images/google.svg";
+import githubIcon from "@/assets/images/github-fill.svg";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -222,6 +224,7 @@ const Login = () => {
               onClick={() => handleOAuth("google")}
               className="h-12 glass border-border/50 rounded-xl text-sm text-muted-foreground hover:text-foreground"
             >
+              <img src={googleIcon} alt="Google" className="w-4 h-4 mr-2" />
               Google
             </Button>
             <Button
@@ -229,6 +232,7 @@ const Login = () => {
               onClick={() => handleOAuth("github")}
               className="h-12 glass border-border/50 rounded-xl text-sm text-muted-foreground hover:text-foreground"
             >
+              <img src={githubIcon} alt="GitHub" className="w-4 h-4 mr-2" />
               GitHub
             </Button>
           </div>
