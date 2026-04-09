@@ -12,7 +12,7 @@ import ParticleBackground from "@/components/layout/ParticleBackground";
 const sections = [
   {
     title: "Information We Collect",
-    content: `We collect the following types of information when you use ConnectLive:
+    content: `We collect the following types of information when you use GlimseConnect:
 
 **Personal Information:** Name, email address, date of birth, country, gender, profile photo, username, bio, and interests you provide during registration.
 
@@ -37,7 +37,7 @@ const sections = [
   },
   {
     title: "Video Streaming Data",
-    content: `**Peer-to-Peer Technology:** Video and audio streams are transmitted directly between users using WebRTC technology. ConnectLive servers facilitate the initial connection but do not process, record, or store any video or audio content.
+    content: `**Peer-to-Peer Technology:** Video and audio streams are transmitted directly between users using WebRTC technology. GlimseConnect servers facilitate the initial connection but do not process, record, or store any video or audio content.
 
 **Face Detection:** Our face detection feature operates entirely on your device (client-side). It uses brightness analysis to detect if your camera is covered. No biometric data is collected, stored, or transmitted to our servers.
 
@@ -95,7 +95,7 @@ const sections = [
 • **Opt-out** of marketing communications
 • **Restrict** processing of your data in certain circumstances
 
-To exercise any of these rights, visit your Settings page or contact us at privacy@connectlive.com.`,
+To exercise any of these rights, visit your Settings page or contact us at privacy@glimseconnect.com.`,
   },
   {
     title: "Cookies & Tracking",
@@ -112,7 +112,7 @@ You can manage cookie preferences through our cookie consent banner or your brow
   },
   {
     title: "Children's Privacy",
-    content: `ConnectLive is strictly for users aged **18 and older**. We do not knowingly collect personal information from anyone under 18. If we discover that a user is under 18, their account will be immediately terminated and all associated data will be deleted.`,
+    content: `GlimseConnect is strictly for users aged **18 and older**. We do not knowingly collect personal information from anyone under 18. If we discover that a user is under 18, their account will be immediately terminated and all associated data will be deleted.`,
   },
   {
     title: "International Data Transfers",
@@ -130,15 +130,15 @@ You can manage cookie preferences through our cookie consent banner or your brow
   },
   {
     title: "Changes to This Policy",
-    content: `We may update this Privacy Policy from time to time. If we make material changes, we will notify you through the app or via email at least **30 days** before the changes take effect. Continued use of ConnectLive after changes constitute acceptance of the updated policy.`,
+    content: `We may update this Privacy Policy from time to time. If we make material changes, we will notify you through the app or via email at least **30 days** before the changes take effect. Continued use of GlimseConnect after changes constitute acceptance of the updated policy.`,
   },
   {
     title: "Contact Us",
     content: `For privacy-related inquiries:
 
-• **Email:** privacy@connectlive.com
-• **Contact Form:** [connectlive.com/contact](/contact)
-• **Data Protection Officer:** dpo@connectlive.com`,
+• **Email:** privacy@glimseconnect.com
+• **Contact Form:** [glimseconnect.com/contact](/contact)
+• **Data Protection Officer:** dpo@glimseconnect.com`,
   },
 ];
 
@@ -158,7 +158,7 @@ const PrivacyPolicy = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -176,7 +176,7 @@ const PrivacyPolicy = () => {
             </div>
             <p className="text-muted-foreground">Last Updated: March 1, 2026</p>
             <p className="text-muted-foreground mt-4">
-              At ConnectLive, we take your privacy seriously. This Privacy
+              At GlimseConnect, we take your privacy seriously. This Privacy
               Policy explains how we collect, use, share, and protect your
               personal information when you use our platform.
             </p>

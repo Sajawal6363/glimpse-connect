@@ -44,7 +44,7 @@ const Navbar = () => {
             <Wifi className="w-4 h-4 text-primary-foreground" />
           </div>
           <span className="font-display text-lg font-bold neon-text-blue text-primary hidden sm:block">
-            ConnectLive
+            GlimseConnect
           </span>
         </Link>
       </div>

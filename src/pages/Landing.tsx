@@ -383,7 +383,7 @@ const Landing = () => {
             <Wifi className="w-5 h-5 text-primary-foreground" />
           </div>
           <span className="font-display text-xl font-bold neon-text-blue text-primary">
-            ConnectLive
+            GlimseConnect
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -442,7 +442,7 @@ const Landing = () => {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-4xl font-display font-bold text-foreground mb-4">
-            Why ConnectLive?
+            Why GlimseConnect?
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             Built different. Designed to be the safest & most immersive way to
@@ -618,11 +618,11 @@ const Landing = () => {
                 <Wifi className="w-3.5 h-3.5 text-primary-foreground" />
               </div>
               <span className="font-display text-sm font-bold text-primary">
-                ConnectLive
+                GlimseConnect
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} ConnectLive. All rights
+              &copy; {new Date().getFullYear()} GlimseConnect. All rights
               reserved.
             </p>
           </div>

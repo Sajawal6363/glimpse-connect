@@ -58,7 +58,7 @@ const About = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -72,7 +72,7 @@ const About = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             About{" "}
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              ConnectLive
+              GlimseConnect
             </span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -91,12 +91,12 @@ const About = () => {
         >
           <h2 className="text-2xl font-bold text-foreground mb-4">Our Story</h2>
           <p className="text-muted-foreground leading-relaxed mb-4">
-            ConnectLive was born from a simple idea: in a world where social
+            GlimseConnect was born from a simple idea: in a world where social
             media often feels performative and superficial, there's a need for
             genuine, spontaneous human connection.
           </p>
           <p className="text-muted-foreground leading-relaxed mb-4">
-            We built ConnectLive to be different — a platform where you can meet
+            We built GlimseConnect to be different — a platform where you can meet
             real people, have real conversations, and discover perspectives from
             around the world. No follower counts, no likes, no algorithms
             deciding what you see. Just face-to-face conversations that remind
@@ -104,7 +104,7 @@ const About = () => {
           </p>
           <p className="text-muted-foreground leading-relaxed">
             With AI-powered safety features, smart matching, and a vibrant
-            community, ConnectLive is the safest and most immersive way to meet
+            community, GlimseConnect is the safest and most immersive way to meet
             new people online.
           </p>
         </motion.div>
@@ -154,7 +154,7 @@ const About = () => {
             <h2 className="text-2xl font-bold text-foreground">Safety First</h2>
           </div>
           <p className="text-muted-foreground leading-relaxed mb-4">
-            Your safety is our top priority. ConnectLive employs multiple layers
+            Your safety is our top priority. GlimseConnect employs multiple layers
             of protection:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

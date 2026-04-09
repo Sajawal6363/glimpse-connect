@@ -170,7 +170,7 @@ const Checkout = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -437,7 +437,7 @@ const Checkout = () => {
                 </div>
                 <div>
                   <p className="font-bold text-foreground">
-                    ConnectLive {plan.name}
+                    GlimseConnect {plan.name}
                   </p>
                   <p className="text-sm text-muted-foreground capitalize">
                     {billingCycle} billing

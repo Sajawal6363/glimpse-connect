@@ -1,14 +1,14 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+Disallow: /login
+Disallow: /register
+Disallow: /confirm-email
+Disallow: /stream
+Disallow: /chat
+Disallow: /groups
+Disallow: /settings
+Disallow: /notifications
+Disallow: /blocked-users
+Disallow: /checkout
+
+Sitemap: https://glimseconnect.com/sitemap.xml

@@ -1,4 +1,4 @@
-# 🔧 GlimpseConnect — Make Everything Dynamic & Fully Functional
+# 🔧 GlimseConnect — Make Everything Dynamic & Fully Functional
 
 ## 📌 Context: Current Codebase Analysis
 
@@ -652,12 +652,12 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 ### 5.1 Privacy Policy Page (`src/pages/PrivacyPolicy.tsx`)
 
-Create a full, professional **Privacy Policy** page with the ConnectLive design system. Include these sections:
+Create a full, professional **Privacy Policy** page with the GlimseConnect design system. Include these sections:
 
 - **Last Updated** date
 - **Information We Collect**: Personal info (name, email, DOB, country, profile photo), device info, usage data, camera/microphone data during streams, chat messages, IP addresses
 - **How We Use Your Information**: Provide services, matchmaking, safety/moderation, analytics, improve experience, communicate with users
-- **Video Streaming Data**: Explain that video streams are P2P and not recorded by ConnectLive. Explain face detection is done client-side and no biometric data is stored. Explain content moderation scanning
+- **Video Streaming Data**: Explain that video streams are P2P and not recorded by GlimseConnect. Explain face detection is done client-side and no biometric data is stored. Explain content moderation scanning
 - **Information Sharing**: No selling data. Sharing with: law enforcement (when required), service providers (hosting, analytics), safety (reports of abuse)
 - **Data Retention**: Account data kept while account active, deleted within 30 days of account deletion, chat messages retained for 90 days, moderation logs for 1 year
 - **Your Rights**: Access, correct, delete your data. Export data. Opt-out of marketing
@@ -679,12 +679,12 @@ Full **Terms of Service** with these sections:
 - **Account Responsibilities**: Keep credentials secure, responsible for account activity
 - **Acceptable Use Policy**: No nudity/sexual content, no harassment/bullying, no hate speech, no spam, no impersonation, no minors, no illegal activity, no commercial solicitation
 - **Streaming Conduct Rules**: Must show face during calls, no recording other users, no sharing explicit content, respect others' boundaries, use report/skip for uncomfortable situations
-- **Content Ownership**: Users own their content but grant ConnectLive license to display it
+- **Content Ownership**: Users own their content but grant GlimseConnect license to display it
 - **Moderation & Enforcement**: Strike system (warning → 24h ban → permanent ban), AI-assisted moderation, right to remove content or terminate accounts
-- **Intellectual Property**: ConnectLive branding, design, code are owned by ConnectLive
+- **Intellectual Property**: GlimseConnect branding, design, code are owned by GlimseConnect
 - **Disclaimers**: Service provided "as is", no guarantee of matches, not responsible for user behavior
 - **Limitation of Liability**: Maximum liability limited to subscription fees paid
-- **Indemnification**: Users indemnify ConnectLive for violations
+- **Indemnification**: Users indemnify GlimseConnect for violations
 - **Termination**: Either party can terminate, what happens to data on termination
 - **Governing Law**: Specify jurisdiction
 - **Dispute Resolution**: Arbitration clause
@@ -753,7 +753,7 @@ Design: Side-by-side cards with glassmorphism. Free = subtle, Premium = neon blu
 
 ### 5.6 About Page (`src/pages/About.tsx`)
 
-**About ConnectLive** page:
+**About GlimseConnect** page:
 
 - Hero section with app mission
 - "Our Story" — why we built this
@@ -778,7 +778,7 @@ Design: Side-by-side cards with glassmorphism. Free = subtle, Premium = neon blu
 
 **Frequently Asked Questions** with accordion (use ShadCN Accordion):
 
-- **General**: What is ConnectLive?, Is it free?, What countries are supported?
+- **General**: What is GlimseConnect?, Is it free?, What countries are supported?
 - **Account**: How to create account?, How to delete account?, How to change password?, How to verify profile?
 - **Streaming**: How does matching work?, Can I choose who to talk to?, What if someone is inappropriate?, Why do I need to show my face?, Can I record calls?
 - **Chat**: How does chat work?, Can I message anyone?, What are mutual follows?
@@ -1025,7 +1025,7 @@ VITE_TURN_PASSWORD=
 
 # App
 VITE_APP_URL=http://localhost:5173
-VITE_APP_NAME=ConnectLive
+VITE_APP_NAME=GlimseConnect
 ```
 
 ---

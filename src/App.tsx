@@ -13,6 +13,7 @@ import PublicRoute from "@/components/auth/PublicRoute";
 import CookieConsent from "@/components/CookieConsent";
 import IncomingCallOverlay from "@/components/IncomingCallOverlay";
 import CallFloatingWidget from "@/components/CallFloatingWidget";
+import SEOManager from "@/components/SEOManager";
 
 // Pages
 import Landing from "./pages/Landing";
@@ -90,6 +91,7 @@ const AppInner = () => {
 
   return (
     <>
+      <SEOManager />
       <Routes>
         {/* Public pages */}
         <Route path="/" element={<Landing />} />

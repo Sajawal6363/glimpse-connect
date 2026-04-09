@@ -106,7 +106,7 @@ const Login = () => {
             <Wifi className="w-6 h-6 text-primary-foreground" />
           </div>
           <span className="font-display text-2xl font-bold neon-text-blue text-primary">
-            ConnectLive
+            GlimseConnect
           </span>
         </div>
 
@@ -218,7 +218,7 @@ const Login = () => {
             <div className="flex-1 h-px bg-border/50" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <Button
               variant="outline"
               onClick={() => handleOAuth("google")}
@@ -226,14 +226,6 @@ const Login = () => {
             >
               <img src={googleIcon} alt="Google" className="w-4 h-4 mr-2" />
               Google
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleOAuth("github")}
-              className="h-12 glass border-border/50 rounded-xl text-sm text-muted-foreground hover:text-foreground"
-            >
-              <img src={githubIcon} alt="GitHub" className="w-4 h-4 mr-2" />
-              GitHub
             </Button>
           </div>
 

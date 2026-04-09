@@ -834,40 +834,8 @@ const Stream = () => {
     }
 
     setState("searching");
-
-    // Re-enter queue after a short delay
-    setTimeout(async () => {
+    setTimeout(() => {
       isSkippingRef.current = false;
-      if (!user?.id) return;
-
-      await matchmakingService.leaveQueue();
-
-      const prefs = {
-        country: countryFilter === "global" ? undefined : countryFilter,
-        gender: genderFilter === "any" ? undefined : genderFilter,
-        profileGender: user.gender || undefined,
-        profileCountry: user.country_code || undefined,
-      };
-
-      await matchmakingService.joinQueue(user.id, prefs);
-
-      const unsub1 = matchmakingService.onMatch((matched) => {
-        matchmakingUnsubsRef.current.forEach((fn) => fn());
-        matchmakingUnsubsRef.current = [];
-        connectToStrangerRef.current(matched);
-      });
-
-      const unsub2 = matchmakingService.onTimeout(() => {
-        toast({
-          title: "No match found",
-          description: "Retrying automatically...",
-        });
-        // Trigger another skip-internal cycle to retry
-        isSkippingRef.current = false;
-        handleSkipInternal();
-      });
-
-      matchmakingUnsubsRef.current = [unsub1, unsub2];
     }, 500);
   }, [
     user?.id,

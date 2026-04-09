@@ -251,7 +251,7 @@ class MatchmakingService {
       .maybeSingle();
 
     // Send match-request to the other user, including the targetUserId
-    this.channel?.send({
+    const resp = await this.channel?.send({
       type: "broadcast",
       event: "match-request",
       payload: {
@@ -260,6 +260,11 @@ class MatchmakingService {
         targetUserId: bestMatch.userId,
       },
     });
+
+    if (resp !== "ok") {
+      console.error("[Matchmaking] Failed to send match-request", resp);
+      return;
+    }
 
     // We also accept the match on our end
     this._matched = true;

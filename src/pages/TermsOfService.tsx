@@ -12,11 +12,11 @@ import ParticleBackground from "@/components/layout/ParticleBackground";
 const sections = [
   {
     title: "1. Acceptance of Terms",
-    content: `By creating an account or using ConnectLive, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any part of these terms, you may not use our service. These terms constitute a legally binding agreement between you and ConnectLive.`,
+    content: `By creating an account or using GlimseConnect, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any part of these terms, you may not use our service. These terms constitute a legally binding agreement between you and GlimseConnect.`,
   },
   {
     title: "2. Eligibility",
-    content: `To use ConnectLive, you must:
+    content: `To use GlimseConnect, you must:
 • Be at least **18 years of age**
 • Provide accurate and truthful information during registration
 • Not have been previously banned from the platform
@@ -58,36 +58,36 @@ const sections = [
   },
   {
     title: "5A. Call Recording & History",
-    content: `ConnectLive logs call metadata (duration, participants, timestamps, connection quality) for service improvement and safety.
+    content: `GlimseConnect logs call metadata (duration, participants, timestamps, connection quality) for service improvement and safety.
 
-• Video/audio content is **NOT recorded or stored** by ConnectLive; all calls are peer-to-peer encrypted via WebRTC (DTLS/SRTP)
+• Video/audio content is **NOT recorded or stored** by GlimseConnect; all calls are peer-to-peer encrypted via WebRTC (DTLS/SRTP)
 • Users may **NOT** record other users' video or audio without explicit consent
 • Call history metadata is stored for up to **2 years** and can be hidden or deleted by the user from their History view
 • Gift transactions during calls are logged and visible to both sender and receiver
 • Call ratings are used to improve matching quality
-• ConnectLive may use anonymized, aggregated call metadata for analytics and service improvement
+• GlimseConnect may use anonymized, aggregated call metadata for analytics and service improvement
 • Face detection runs entirely on the user's device — no biometric data is transmitted to our servers`,
   },
   {
     title: "6. Content Ownership",
-    content: `• You retain ownership of content you create and share on ConnectLive
-• By using the platform, you grant ConnectLive a non-exclusive, worldwide, royalty-free license to display, distribute, and store your content as necessary to operate the service
+    content: `• You retain ownership of content you create and share on GlimseConnect
+• By using the platform, you grant GlimseConnect a non-exclusive, worldwide, royalty-free license to display, distribute, and store your content as necessary to operate the service
 • You represent that you have the right to share any content you upload
-• ConnectLive does not claim ownership of user-generated content`,
+• GlimseConnect does not claim ownership of user-generated content`,
   },
   {
     title: "6A. Virtual Currency & Gifts (ConnectCoins)",
-    content: `ConnectLive offers a virtual currency system called **ConnectCoins** (💰) and a Diamonds (💎) reward system.
+    content: `GlimseConnect offers a virtual currency system called **ConnectCoins** (💰) and a Diamonds (💎) reward system.
 
 **Coins:**
-• ConnectCoins are a virtual currency with **no real-world monetary value** outside of ConnectLive
+• ConnectCoins are a virtual currency with **no real-world monetary value** outside of GlimseConnect
 • Coins are **non-transferable** between users and **non-refundable** (except as required by law)
 • Coins expire after **12 months** of account inactivity
-• ConnectLive reserves the right to modify coin pricing, gift costs, and gift availability at any time
+• GlimseConnect reserves the right to modify coin pricing, gift costs, and gift availability at any time
 • Purchases are final; no refunds for used coins
 • Unused coins may be requested for refund within **14 days** of purchase (EU consumers: 14-day statutory cooling-off period applies)
 • All prices are in USD unless otherwise stated; applicable taxes may apply
-• In-app purchases are processed through third-party payment providers (Stripe); ConnectLive is not responsible for payment processing errors
+• In-app purchases are processed through third-party payment providers (Stripe); GlimseConnect is not responsible for payment processing errors
 
 **Diamonds:**
 • Diamonds are earned when you receive gifts (1 diamond = 1 coin value of gift received)
@@ -96,18 +96,18 @@ const sections = [
 
 **Gifts:**
 • Gifts are cosmetic features that trigger visual animations; they do not confer additional platform privileges
-• ConnectLive is not responsible for gifts sent to unintended recipients
+• GlimseConnect is not responsible for gifts sent to unintended recipients
 • Gift animations are subject to change without notice
 
 **Prohibited Conduct:**
 • Users may not sell, trade, or transfer virtual items for real money
 • Any attempt to manipulate the gifting system (bots, fraud, self-gifting via alt accounts) results in **permanent ban** and forfeiture of all virtual currency
 • Gifting to solicit inappropriate behavior, explicit content, or as payment for services is a Terms violation resulting in permanent ban
-• ConnectLive reserves the right to revoke virtual currency in cases of fraud or abuse`,
+• GlimseConnect reserves the right to revoke virtual currency in cases of fraud or abuse`,
   },
   {
     title: "7. Moderation & Enforcement",
-    content: `ConnectLive employs a strike system:
+    content: `GlimseConnect employs a strike system:
 • **First violation:** Warning notification
 • **Second violation:** 24-hour temporary ban
 • **Third violation:** Permanent account ban
@@ -123,7 +123,7 @@ We use a combination of AI-assisted moderation, user reports, and manual review 
   },
   {
     title: "8. Intellectual Property",
-    content: `The ConnectLive name, logo, branding, design, and source code are the intellectual property of ConnectLive. You may not copy, modify, distribute, or create derivative works based on our intellectual property without prior written consent.`,
+    content: `The GlimseConnect name, logo, branding, design, and source code are the intellectual property of GlimseConnect. You may not copy, modify, distribute, or create derivative works based on our intellectual property without prior written consent.`,
   },
   {
     title: "9. Disclaimers",
@@ -136,13 +136,13 @@ We use a combination of AI-assisted moderation, user reports, and manual review 
   },
   {
     title: "10. Limitation of Liability",
-    content: `To the maximum extent permitted by law, ConnectLive's total liability for any claims arising from or related to the service shall not exceed the total amount paid by you to ConnectLive in the **12 months** preceding the claim, or **$100**, whichever is greater.
+    content: `To the maximum extent permitted by law, GlimseConnect's total liability for any claims arising from or related to the service shall not exceed the total amount paid by you to GlimseConnect in the **12 months** preceding the claim, or **$100**, whichever is greater.
 
-ConnectLive is not liable for any indirect, incidental, special, consequential, or punitive damages.`,
+GlimseConnect is not liable for any indirect, incidental, special, consequential, or punitive damages.`,
   },
   {
     title: "11. Indemnification",
-    content: `You agree to indemnify and hold harmless ConnectLive, its officers, directors, employees, and agents from any claims, damages, losses, or expenses arising from your use of the service, violation of these terms, or infringement of any third-party rights.`,
+    content: `You agree to indemnify and hold harmless GlimseConnect, its officers, directors, employees, and agents from any claims, damages, losses, or expenses arising from your use of the service, violation of these terms, or infringement of any third-party rights.`,
   },
   {
     title: "12. Termination",
@@ -157,7 +157,7 @@ ConnectLive is not liable for any indirect, incidental, special, consequential, 
   },
   {
     title: "14. Changes to Terms",
-    content: `We may modify these Terms of Service at any time. We will provide at least **30 days notice** for material changes via email or in-app notification. Continued use of ConnectLive after changes take effect constitutes acceptance of the modified terms.`,
+    content: `We may modify these Terms of Service at any time. We will provide at least **30 days notice** for material changes via email or in-app notification. Continued use of GlimseConnect after changes take effect constitutes acceptance of the modified terms.`,
   },
 ];
 
@@ -177,7 +177,7 @@ const TermsOfService = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -195,7 +195,7 @@ const TermsOfService = () => {
             </div>
             <p className="text-muted-foreground">Last Updated: March 1, 2026</p>
             <p className="text-muted-foreground mt-4">
-              Welcome to ConnectLive. These Terms of Service govern your use of
+              Welcome to GlimseConnect. These Terms of Service govern your use of
               our platform. Please read them carefully before using the service.
             </p>
           </div>

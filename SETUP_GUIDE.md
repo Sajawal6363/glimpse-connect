@@ -1,4 +1,4 @@
-# ConnectLive — Complete Setup Guide
+# GlimseConnect — Complete Setup Guide
 
 This guide walks you through getting **every API key** and configuring everything so your app runs smoothly end-to-end.
 
@@ -45,7 +45,7 @@ VITE_TURN_PASSWORD=
 
 # App
 VITE_APP_URL=http://localhost:8080
-VITE_APP_NAME=ConnectLive
+VITE_APP_NAME=GlimseConnect
 ```
 
 > ⚠️ **Never commit your `.env` file.** It's already in `.gitignore`.
@@ -88,13 +88,13 @@ The app supports **Sign in with Google**. Here's how to set it up:
 4. Click **"+ CREATE CREDENTIALS" → "OAuth client ID"**.
 5. If prompted, configure the **OAuth Consent Screen** first:
    - User type: **External**
-   - App name: `ConnectLive`
+   - App name: `GlimseConnect`
    - Support email: your email
    - Authorized domain: `supabase.co` (add your production domain later too)
    - Save and continue through Scopes & Test Users.
 6. Back on Credentials → Create OAuth Client ID:
    - Application type: **Web application**
-   - Name: `ConnectLive`
+   - Name: `GlimseConnect`
    - Authorized redirect URIs → Add:
      ```
      https://YOUR_PROJECT_ID.supabase.co/auth/v1/callback
@@ -120,7 +120,7 @@ The app also supports **Sign in with GitHub**.
 1. Go to [GitHub → Settings → Developer settings → OAuth Apps](https://github.com/settings/developers).
 2. Click **"New OAuth App"**.
 3. Fill in:
-   - **Application name:** `ConnectLive`
+   - **Application name:** `GlimseConnect`
    - **Homepage URL:** `http://localhost:8080` (change to production URL later)
    - **Authorization callback URL:**
      ```

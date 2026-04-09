@@ -71,7 +71,7 @@ const tips = [
   "Trust your instincts — if something feels wrong, skip or end the call immediately",
   "Use the report and block buttons whenever you encounter inappropriate behavior",
   "Don't agree to meet strangers from the internet in person",
-  "Keep your conversations on ConnectLive where our safety features can protect you",
+  "Keep your conversations on GlimseConnect where our safety features can protect you",
   "Don't click links shared by strangers — they could be malicious",
   "If you're under 18, this platform is not for you — please exit immediately",
   "Take breaks if conversations become stressful or overwhelming",
@@ -93,7 +93,7 @@ const SafetyCenter = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>

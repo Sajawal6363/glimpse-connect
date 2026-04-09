@@ -31,7 +31,7 @@ const ConfirmEmail = () => {
               <Wifi className="w-5 h-5 text-primary-foreground" />
             </div>
             <span className="font-display text-xl font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
 
@@ -68,7 +68,7 @@ const ConfirmEmail = () => {
               </div>
               <p className="text-sm text-muted-foreground">
                 Open the email from{" "}
-                <strong className="text-foreground">ConnectLive</strong>
+                <strong className="text-foreground">GlimseConnect</strong>
               </p>
             </div>
             <div className="flex items-start gap-3">

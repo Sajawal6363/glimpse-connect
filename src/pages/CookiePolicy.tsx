@@ -74,7 +74,7 @@ These third parties have their own privacy policies. We recommend reviewing them
 2. **Browser settings** — most browsers allow you to block or delete cookies
 3. **Browser extensions** — privacy-focused extensions can block tracking
 
-**Note:** Blocking essential cookies will prevent you from using ConnectLive.
+**Note:** Blocking essential cookies will prevent you from using GlimseConnect.
 
 **Popular browser cookie settings:**
 • Chrome: Settings → Privacy and Security → Cookies
@@ -100,7 +100,7 @@ const CookiePolicy = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -118,7 +118,7 @@ const CookiePolicy = () => {
             </div>
             <p className="text-muted-foreground">Last Updated: March 1, 2026</p>
             <p className="text-muted-foreground mt-4">
-              This Cookie Policy explains how ConnectLive uses cookies and
+              This Cookie Policy explains how GlimseConnect uses cookies and
               similar technologies to recognize you when you visit our platform.
             </p>
           </div>

@@ -102,5 +102,5 @@ export const mockNotifications = [
   { id: "n2", type: "online", user: mockUsers[0], message: "is now online", time: "10 min ago" },
   { id: "n3", type: "message", user: mockUsers[2], message: "sent you a message", time: "30 min ago" },
   { id: "n4", type: "follow", user: mockUsers[5], message: "started following you", time: "1 hour ago" },
-  { id: "n5", type: "system", user: null, message: "Welcome to ConnectLive! Complete your profile to get started.", time: "2 hours ago" },
+  { id: "n5", type: "system", user: null, message: "Welcome to GlimseConnect! Complete your profile to get started.", time: "2 hours ago" },
 ];

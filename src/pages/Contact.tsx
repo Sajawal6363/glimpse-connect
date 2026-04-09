@@ -78,7 +78,7 @@ const Contact = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -101,7 +101,7 @@ const Contact = () => {
               <Mail className="w-8 h-8 text-primary mx-auto mb-3" />
               <h3 className="font-semibold text-foreground mb-1">Email</h3>
               <p className="text-sm text-muted-foreground">
-                support@connectlive.com
+                support@glimseconnect.com
               </p>
             </div>
             <div className="glass rounded-2xl p-6 text-center">
@@ -115,7 +115,7 @@ const Contact = () => {
               <Mail className="w-8 h-8 text-neon-green mx-auto mb-3" />
               <h3 className="font-semibold text-foreground mb-1">Privacy</h3>
               <p className="text-sm text-muted-foreground">
-                privacy@connectlive.com
+                privacy@glimseconnect.com
               </p>
             </div>
           </div>

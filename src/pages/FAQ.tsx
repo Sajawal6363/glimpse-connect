@@ -14,16 +14,16 @@ const categories = [
     title: "General",
     faqs: [
       {
-        q: "What is ConnectLive?",
-        a: "ConnectLive is a next-generation video platform that lets you connect with strangers worldwide through live video calls. It features AI-powered safety, smart matching based on interests, and social features like following and messaging.",
+        q: "What is GlimseConnect?",
+        a: "GlimseConnect is a next-generation video platform that lets you connect with strangers worldwide through live video calls. It features AI-powered safety, smart matching based on interests, and social features like following and messaging.",
       },
       {
-        q: "Is ConnectLive free?",
-        a: "Yes! ConnectLive offers a free plan with basic features including random video matching, 5 skips per hour, and text chat with mutual followers. Premium and VIP plans are available for enhanced features.",
+        q: "Is GlimseConnect free?",
+        a: "Yes! GlimseConnect offers a free plan with basic features including random video matching, 5 skips per hour, and text chat with mutual followers. Premium and VIP plans are available for enhanced features.",
       },
       {
         q: "What countries are supported?",
-        a: "ConnectLive is available worldwide in 190+ countries. You can filter matches by country to connect with people from specific regions.",
+        a: "GlimseConnect is available worldwide in 190+ countries. You can filter matches by country to connect with people from specific regions.",
       },
     ],
   },
@@ -44,7 +44,7 @@ const categories = [
       },
       {
         q: "How do I get a verified badge?",
-        a: "Verified badges are automatically given to Premium and VIP subscribers. They indicate that the user is a paying member of the ConnectLive community.",
+        a: "Verified badges are automatically given to Premium and VIP subscribers. They indicate that the user is a paying member of the GlimseConnect community.",
       },
     ],
   },
@@ -95,7 +95,7 @@ const categories = [
     faqs: [
       {
         q: "Is my video recorded?",
-        a: "No. Video streams are peer-to-peer (P2P) using WebRTC technology. ConnectLive servers only facilitate the initial connection — your video and audio data is transmitted directly between you and the other user.",
+        a: "No. Video streams are peer-to-peer (P2P) using WebRTC technology. GlimseConnect servers only facilitate the initial connection — your video and audio data is transmitted directly between you and the other user.",
       },
       {
         q: "How does content moderation work?",
@@ -124,7 +124,7 @@ const categories = [
       },
       {
         q: "What is the refund policy?",
-        a: "We offer a 7-day refund policy for first-time subscribers who haven't used premium features extensively. Contact support@connectlive.com for refund requests.",
+        a: "We offer a 7-day refund policy for first-time subscribers who haven't used premium features extensively. Contact support@glimseconnect.com for refund requests.",
       },
     ],
   },
@@ -133,7 +133,7 @@ const categories = [
     faqs: [
       {
         q: "What are ConnectCoins?",
-        a: "ConnectCoins (💰) are ConnectLive's virtual currency used to purchase and send gifts to other users during live calls, in chat, or on profiles. They can be purchased in the Gift Shop from the sidebar.",
+        a: "ConnectCoins (💰) are GlimseConnect's virtual currency used to purchase and send gifts to other users during live calls, in chat, or on profiles. They can be purchased in the Gift Shop from the sidebar.",
       },
       {
         q: "How do I buy ConnectCoins?",
@@ -145,7 +145,7 @@ const categories = [
       },
       {
         q: "What are Diamonds?",
-        a: "Diamonds (💎) are earned when you receive gifts. Every 1 coin of gift value you receive = 1 diamond earned. Diamonds represent your social status on ConnectLive and appear on your profile. They currently cannot be converted to cash.",
+        a: "Diamonds (💎) are earned when you receive gifts. Every 1 coin of gift value you receive = 1 diamond earned. Diamonds represent your social status on GlimseConnect and appear on your profile. They currently cannot be converted to cash.",
       },
       {
         q: "What's the difference between gift rarities?",
@@ -153,7 +153,7 @@ const categories = [
       },
       {
         q: "Can I refund purchased coins?",
-        a: "Unused coins may be refunded within 14 days of purchase. Once coins have been used to send gifts, they are non-refundable. EU consumers have a 14-day statutory cooling-off period. Contact support@connectlive.com for refund requests.",
+        a: "Unused coins may be refunded within 14 days of purchase. Once coins have been used to send gifts, they are non-refundable. EU consumers have a 14-day statutory cooling-off period. Contact support@glimseconnect.com for refund requests.",
       },
       {
         q: "Can I transfer coins to another user?",
@@ -174,7 +174,7 @@ const categories = [
       },
       {
         q: "Are my video calls recorded?",
-        a: "No. All video and audio is transmitted peer-to-peer via WebRTC (DTLS/SRTP encrypted). ConnectLive only stores call metadata (duration, participants, timestamps) — never the actual audio or video content.",
+        a: "No. All video and audio is transmitted peer-to-peer via WebRTC (DTLS/SRTP encrypted). GlimseConnect only stores call metadata (duration, participants, timestamps) — never the actual audio or video content.",
       },
       {
         q: "Why do some calls not appear in my history?",
@@ -195,7 +195,7 @@ const categories = [
     faqs: [
       {
         q: "Which browsers are supported?",
-        a: "ConnectLive works best on Chrome, Firefox, Edge, and Safari (latest versions). WebRTC support is required for video streaming.",
+        a: "GlimseConnect works best on Chrome, Firefox, Edge, and Safari (latest versions). WebRTC support is required for video streaming.",
       },
       {
         q: "My camera/mic isn't working?",
@@ -225,7 +225,7 @@ const FAQ = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -240,7 +240,7 @@ const FAQ = () => {
               Frequently Asked Questions
             </h1>
             <p className="text-muted-foreground">
-              Find answers to common questions about ConnectLive.
+              Find answers to common questions about GlimseConnect.
             </p>
           </div>
 

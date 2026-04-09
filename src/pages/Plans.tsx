@@ -35,7 +35,7 @@ const Plans = () => {
       name: "Premium",
       price: yearly ? "$79.99" : "$9.99",
       period: yearly ? "/year" : "/month",
-      description: "Unlock the full ConnectLive experience",
+      description: "Unlock the full GlimseConnect experience",
       features: [
         "Unlimited skips",
         "All country filters",
@@ -60,7 +60,7 @@ const Plans = () => {
       name: "VIP",
       price: yearly ? "$149.99" : "$19.99",
       period: yearly ? "/year" : "/month",
-      description: "The ultimate ConnectLive experience",
+      description: "The ultimate GlimseConnect experience",
       features: [
         "Everything in Premium",
         "Custom profile themes",
@@ -94,7 +94,7 @@ const Plans = () => {
               <Wifi className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-display text-lg font-bold neon-text-blue text-primary">
-              ConnectLive
+              GlimseConnect
             </span>
           </div>
         </div>
@@ -112,7 +112,7 @@ const Plans = () => {
           </h1>
           <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
             Upgrade to unlock premium features and get the most out of
-            ConnectLive.
+            GlimseConnect.
           </p>
 
           {/* Toggle */}
