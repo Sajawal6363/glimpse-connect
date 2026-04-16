@@ -87,6 +87,11 @@ const ROUTE_SEO: Record<string, SeoConfig> = {
       "Confirm your email address to activate your GlimseConnect account.",
     indexable: false,
   },
+  "/confirm-otp": {
+    title: "Confirm OTP — GlimseConnect",
+    description: "Enter your one-time code to securely continue.",
+    indexable: false,
+  },
 };
 
 const DYNAMIC_NO_INDEX_PREFIXES = [

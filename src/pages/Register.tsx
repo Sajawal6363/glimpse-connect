@@ -107,7 +107,7 @@ const Register = () => {
     const email = pendingEmail
       ? `?email=${encodeURIComponent(pendingEmail)}`
       : "";
-    navigate(`/confirm-email${email}`);
+    navigate(`/confirm-otp${email}${email ? '&' : '?'}type=signup`);
   }, [needsEmailConfirmation, pendingEmail, navigate]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,7 +193,7 @@ const Register = () => {
       const currentState = useAuthStore.getState();
       if (currentState.needsEmailConfirmation) {
         const email = currentState.pendingEmail || step1Data.email;
-        navigate(`/confirm-email?email=${encodeURIComponent(email)}`);
+        navigate(`/confirm-otp?email=${encodeURIComponent(email)}&type=signup`);
         setIsSubmitting(false);
         return;
       }
@@ -208,7 +208,7 @@ const Register = () => {
       const currentState = useAuthStore.getState();
       if (currentState.needsEmailConfirmation) {
         const email = currentState.pendingEmail || step1Form.getValues("email");
-        navigate(`/confirm-email?email=${encodeURIComponent(email)}`);
+        navigate(`/confirm-otp?email=${encodeURIComponent(email)}&type=signup`);
         setIsSubmitting(false);
         return;
       }

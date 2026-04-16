@@ -20,6 +20,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import ConfirmOTP from "./pages/ConfirmOTP";
 import Stream from "./pages/Stream";
 import StreamHistory from "./pages/StreamHistory";
 import Chat from "./pages/Chat";
@@ -127,6 +128,14 @@ const AppInner = () => {
           element={
             <PublicRoute>
               <ConfirmEmail />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/confirm-otp"
+          element={
+            <PublicRoute>
+              <ConfirmOTP />
             </PublicRoute>
           }
         />

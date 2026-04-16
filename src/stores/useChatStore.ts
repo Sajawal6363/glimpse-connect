@@ -46,7 +46,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   fetchConversations: async (userId) => {
     set({ isLoading: true });
     try {
-      // Get mutual follows first (only accepted)
+      // Get accepted friend connections in either direction
       const { data: following } = await supabase
         .from("follows")
         .select("following_id")
@@ -59,23 +59,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
         .eq("following_id", userId)
         .eq("status", "accepted");
 
-      const followingIds = new Set(following?.map((f) => f.following_id) || []);
-      const followerIds = new Set(followers?.map((f) => f.follower_id) || []);
-      const mutualIds = [...followingIds].filter((id) => followerIds.has(id));
+      const connectedIds = Array.from(
+        new Set([
+          ...(following?.map((f) => f.following_id) || []),
+          ...(followers?.map((f) => f.follower_id) || []),
+        ]),
+      ).filter((id) => id !== userId);
 
-      if (mutualIds.length === 0) {
+      if (connectedIds.length === 0) {
         set({ conversations: [], isLoading: false });
         return;
       }
 
-      // Get latest message for each mutual follow
+      // Get latest message for each accepted connection
       const conversations: Conversation[] = [];
 
-      for (const mutualId of mutualIds) {
+      for (const otherUserId of connectedIds) {
         const { data: profile } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", mutualId)
+          .eq("id", otherUserId)
           .single();
 
         if (!profile) continue;
@@ -84,7 +87,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           .from("messages")
           .select("*")
           .or(
-            `and(sender_id.eq.${userId},receiver_id.eq.${mutualId}),and(sender_id.eq.${mutualId},receiver_id.eq.${userId})`,
+            `and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`,
           )
           .order("created_at", { ascending: false })
           .limit(1)
@@ -93,7 +96,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const { count: unreadCount } = await supabase
           .from("messages")
           .select("*", { count: "exact", head: true })
-          .eq("sender_id", mutualId)
+          .eq("sender_id", otherUserId)
           .eq("receiver_id", userId)
           .eq("is_read", false);
 
