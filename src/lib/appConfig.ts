@@ -6,7 +6,7 @@ export const APP_URL = normalizeBaseUrl(
 
 export const APP_NAME = import.meta.env.VITE_APP_NAME || "GlimseConnect";
 
-export const APP_OG_IMAGE_PATH = "/og-image.svg";
+export const APP_OG_IMAGE_PATH = "/og-image.png";
 export const APP_OG_IMAGE_URL = `${APP_URL}${APP_OG_IMAGE_PATH}`;
 
 export const getAbsoluteAppUrl = (path = "/") => {

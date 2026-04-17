@@ -161,6 +161,10 @@ const SEOManager = () => {
     upsertMetaTag("property", "og:description", seo.description);
     upsertMetaTag("property", "og:url", canonicalUrl);
     upsertMetaTag("property", "og:image", APP_OG_IMAGE_URL);
+    upsertMetaTag("property", "og:image:secure_url", APP_OG_IMAGE_URL);
+    upsertMetaTag("property", "og:image:type", "image/png");
+    upsertMetaTag("property", "og:image:width", "1200");
+    upsertMetaTag("property", "og:image:height", "630");
     upsertMetaTag("property", "og:image:alt", `${APP_NAME} preview image`);
     upsertMetaTag("name", "twitter:card", "summary_large_image");
     upsertMetaTag("name", "twitter:title", seo.title);
