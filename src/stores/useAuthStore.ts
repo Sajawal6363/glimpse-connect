@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { supabase, type Profile } from "@/lib/supabase";
 import { realtimeService } from "@/lib/realtime";
+import { getAbsoluteAppUrl } from "@/lib/appConfig";
 
 const PENDING_AVATAR_STORAGE_KEY = "pending_signup_avatar";
 
@@ -440,7 +441,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithGoogle: async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/stream` },
+      options: { redirectTo: getAbsoluteAppUrl("/stream") },
     });
     if (error) throw new Error(error.message);
   },
@@ -448,7 +449,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loginWithGithub: async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "github",
-      options: { redirectTo: `${window.location.origin}/stream` },
+      options: { redirectTo: getAbsoluteAppUrl("/stream") },
     });
     if (error) throw new Error(error.message);
   },
@@ -552,7 +553,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   resetPassword: async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: getAbsoluteAppUrl("/login"),
     });
     if (error) throw new Error(error.message);
   },

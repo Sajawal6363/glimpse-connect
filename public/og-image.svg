@@ -1,0 +1,48 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="80" y1="40" x2="1120" y2="590" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F172A" />
+      <stop offset="1" stop-color="#111827" />
+    </linearGradient>
+    <linearGradient id="accent" x1="220" y1="140" x2="960" y2="500" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#22D3EE" />
+      <stop offset="1" stop-color="#A855F7" />
+    </linearGradient>
+    <filter id="glow" x="100" y="100" width="1000" height="430" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="22" result="blur" />
+      <feBlend in="SourceGraphic" in2="blur" mode="screen" />
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" rx="40" fill="url(#bg)" />
+  <rect x="54" y="54" width="1092" height="522" rx="32" stroke="url(#accent)" stroke-opacity="0.5" stroke-width="2" />
+
+  <g filter="url(#glow)">
+    <circle cx="230" cy="180" r="95" fill="#22D3EE" fill-opacity="0.2" />
+    <circle cx="980" cy="460" r="130" fill="#A855F7" fill-opacity="0.2" />
+  </g>
+
+  <rect x="145" y="175" width="84" height="84" rx="20" fill="url(#accent)" />
+  <path d="M173 218C173 207.507 181.507 199 192 199C202.493 199 211 207.507 211 218V224H217C227.493 224 236 232.507 236 243C236 253.493 227.493 262 217 262H166C155.507 262 147 253.493 147 243C147 232.507 155.507 224 166 224H173V218Z" fill="white" fill-opacity="0.96" />
+
+  <text x="255" y="225" fill="white" font-size="68" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="800">
+    GlimseConnect
+  </text>
+  <text x="146" y="315" fill="#CFFAFE" font-size="40" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="600">
+    Meet Anyone. Anywhere. Instantly.
+  </text>
+  <text x="146" y="382" fill="#93C5FD" font-size="30" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="500">
+    Safer live video with smart matching and realtime chat.
+  </text>
+
+  <g opacity="0.75">
+    <rect x="146" y="438" width="250" height="54" rx="27" fill="#22D3EE" fill-opacity="0.14" />
+    <text x="178" y="473" fill="#67E8F9" font-size="26" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">AI Safety</text>
+
+    <rect x="420" y="438" width="300" height="54" rx="27" fill="#A855F7" fill-opacity="0.14" />
+    <text x="452" y="473" fill="#D8B4FE" font-size="26" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Smart Matching</text>
+
+    <rect x="742" y="438" width="312" height="54" rx="27" fill="#38BDF8" fill-opacity="0.14" />
+    <text x="774" y="473" fill="#BAE6FD" font-size="26" font-family="Inter, Segoe UI, Arial, sans-serif" font-weight="700">Realtime Streams</text>
+  </g>
+</svg>

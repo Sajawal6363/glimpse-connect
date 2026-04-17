@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { APP_NAME, APP_OG_IMAGE_URL, getAbsoluteAppUrl } from "@/lib/appConfig";
 
 type SeoConfig = {
   title: string;
@@ -149,16 +150,22 @@ const SEOManager = () => {
   useEffect(() => {
     const { pathname } = location;
     const seo = getSeoConfig(pathname);
-    const canonicalUrl = `${window.location.origin}${pathname}`;
+    const canonicalUrl = getAbsoluteAppUrl(pathname);
 
     document.title = seo.title;
 
     upsertMetaTag("name", "description", seo.description);
+    upsertMetaTag("property", "og:type", "website");
+    upsertMetaTag("property", "og:site_name", APP_NAME);
     upsertMetaTag("property", "og:title", seo.title);
     upsertMetaTag("property", "og:description", seo.description);
     upsertMetaTag("property", "og:url", canonicalUrl);
+    upsertMetaTag("property", "og:image", APP_OG_IMAGE_URL);
+    upsertMetaTag("property", "og:image:alt", `${APP_NAME} preview image`);
+    upsertMetaTag("name", "twitter:card", "summary_large_image");
     upsertMetaTag("name", "twitter:title", seo.title);
     upsertMetaTag("name", "twitter:description", seo.description);
+    upsertMetaTag("name", "twitter:image", APP_OG_IMAGE_URL);
     upsertMetaTag(
       "name",
       "robots",
