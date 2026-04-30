@@ -19,6 +19,7 @@ import {
   Bell,
   Home,
   Clock,
+  Gamepad2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -28,6 +29,7 @@ const mainItems = [
   { title: "History", url: "/stream/history", icon: Clock },
   { title: "Chat", url: "/chat", icon: MessageCircle },
   { title: "Explore", url: "/explore", icon: Compass },
+  { title: "Gaming", url: "/gaming", icon: Gamepad2 },
 ];
 
 const secondaryItems = [
