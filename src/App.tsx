@@ -32,6 +32,9 @@ import GroupStream from "./pages/GroupStream";
 import ProfilePage from "./pages/Profile";
 import ProfileEdit from "./pages/ProfileEdit";
 import Explore from "./pages/Explore";
+import Gaming from "./pages/Gaming";
+import CyberReflex from "./pages/CyberAim";
+import FindDiff from "./pages/FindDiff";
 import Settings from "./pages/Settings";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
@@ -226,6 +229,30 @@ const AppInner = () => {
           element={
             <ProtectedRoute>
               <Explore />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gaming"
+          element={
+            <ProtectedRoute>
+              <Gaming />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gaming/cyber-reflex"
+          element={
+            <ProtectedRoute>
+              <CyberReflex />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/gaming/find-diff"
+          element={
+            <ProtectedRoute>
+              <FindDiff />
             </ProtectedRoute>
           }
         />
