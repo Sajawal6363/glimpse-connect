@@ -1,4 +1,11 @@
-import { Video, MessageCircle, Compass, Settings, Home } from "lucide-react";
+import {
+  Video,
+  MessageCircle,
+  Compass,
+  Settings,
+  Home,
+  Gamepad2,
+} from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const items = [
@@ -6,6 +13,7 @@ const items = [
   { title: "Stream", url: "/stream", icon: Video },
   { title: "Chat", url: "/chat", icon: MessageCircle },
   { title: "Explore", url: "/explore", icon: Compass },
+  { title: "Gaming", url: "/gaming", icon: Gamepad2 },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
